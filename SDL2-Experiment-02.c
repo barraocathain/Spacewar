@@ -1,4 +1,4 @@
-// SDL Experiment 01, Barra Ó Catháin.
+// SDL Experiment 02, Barra Ó Catháin.
 // ===================================
 #include <SDL2/SDL.h>
 #include <SDL2/SDL_image.h>
@@ -55,7 +55,7 @@ int main(int argc, char ** argv)
 {
 	SDL_Event event;
 	bool quit = false;
-	int width = 0, height = 0, mouseX = 0, mouseY = 0;
+	int width = 0, height = 0, positionX = 0, positionY = 0, velocityX = 0, velocityY = 0;
 	uint32_t rendererFlags = SDL_RENDERER_ACCELERATED;
 	
 	// Initialize the SDL library, video, sound, and input:
@@ -71,7 +71,7 @@ int main(int argc, char ** argv)
 	SDL_Renderer * renderer = SDL_CreateRenderer(window, -1, rendererFlags);
 
 	SDL_Texture * targetTexture;
-	targetTexture = IMG_LoadTexture(renderer, "./01-TGT.png");
+	targetTexture = IMG_LoadTexture(renderer, "./02-TGT.png");
 	SDL_Rect targetText;
 	targetText.w = 16;
 	targetText.h = 8;
@@ -87,11 +87,52 @@ int main(int argc, char ** argv)
             switch (event.type)
             {
                 case SDL_QUIT:
-                quit = true;
-                break;
+				{
+					quit = true;
+					break;
+				}
+				case SDL_KEYDOWN:
+				{
+					switch (event.key.keysym.sym)
+					{
+						case SDLK_LEFT:
+						{
+							velocityX += -1;
+							break;
+						}
+						case SDLK_RIGHT:
+						{
+							velocityX +=  1;
+							break;
+						}
+						case SDLK_UP:
+						{
+							velocityY += -1;
+							break;
+						}
+						case SDLK_DOWN:
+						{
+							velocityY += 1;
+							break;
+						}
+						default:
+						{
+							break;
+						}
+					}
+					break;
+				}
+				default:
+				{
+					break;
+				}
             }
         }
 
+		// Move the position:
+		positionX += velocityX;
+		positionY += velocityY;
+		
 		// Store the window's current width and height:
 		SDL_GetWindowSize(window, &width, &height);
 
@@ -101,44 +142,21 @@ int main(int argc, char ** argv)
 		// Clear the screen, filling it with black:
 		SDL_RenderClear(renderer);
 
-		// Set the colour to neon green:
-		SDL_SetRenderDrawColor(renderer, 0, 255, 0, 255);
-
-		// Draw the "radar circle" as large as possible, centered in the window:
-		DrawCircle(renderer, width/2, height/2, getRadius(width, height));
-
-		// Draw 16 vertical grid lines, spaced evenly from each other and the window borders:
-		for(int verticalPosition = (height - ((height/16) * 16)) / 2;
-			verticalPosition <= height; verticalPosition += (height / 16))
-		{
-			SDL_RenderDrawLine(renderer, 0, verticalPosition, width, verticalPosition);
-		}
-
-		// Draw 16 horizontal grid lines, spaced evenly from each other and the window borders:
-		for(int horizontalPosition = (width - ((width/16) * 16)) / 2;
-			horizontalPosition <= width; horizontalPosition += (width / 16))
-		{
-			SDL_RenderDrawLine(renderer, horizontalPosition, 0, horizontalPosition, height);
-		}
-
 		// Set the colour to yellow:
 		SDL_SetRenderDrawColor(renderer, 255, 255, 0, 255);
+		
+		// Draw a line from the center of the window to the position pointer:
+		SDL_RenderDrawLine(renderer, width/2, height/2, positionX, positionY);
 
-		// Store the mouse pointer's current position in the window:
-		SDL_GetMouseState(&mouseX, &mouseY);
-
-		// Draw a line from the center of the window to the mouse pointer:
-		SDL_RenderDrawLine(renderer, width/2, height/2, mouseX, mouseY);
-
-		// Draw a circle around the mouse pointer:
-		DrawCircle(renderer, mouseX, mouseY, 15);
+		// Draw a circle around the position pointer:
+		DrawCircle(renderer, positionX, positionY, 15);
 
 		// Set the rect at the correct position to put the TGT down:
-		targetText.x = mouseX + 20;
-		targetText.y = mouseY - 4;
-		if(mouseX < width/2)
+		targetText.x = positionX + 20;
+		targetText.y = positionY - 4;
+		if(positionX < width/2)
 		{
-			targetText.x = mouseX - 36;
+			targetText.x = positionX - 36;
 		}
 		SDL_RenderCopy(renderer, targetTexture, NULL, &targetText);
 		// Present the rendered graphics:
@@ -151,5 +169,5 @@ int main(int argc, char ** argv)
 }
 // ===========================================================================================
 // Local Variables:
-// compile-command: "gcc `sdl2-config --libs --cflags` SDL2-Experiment-01.c  -lSDL2_image -lm"
+// compile-command: "gcc `sdl2-config --libs --cflags` SDL2-Experiment-02.c  -lSDL2_image -lm"
 // End:
