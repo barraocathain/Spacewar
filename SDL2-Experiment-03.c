@@ -1,7 +1,6 @@
-// SDL Experiment 02, Barra Ó Catháin.
+// SDL Experiment 03, Barra Ó Catháin.
 // ===================================
 #include <SDL2/SDL.h>
-#include <SDL2/SDL_image.h>
 #include <SDL2/SDL_timer.h>
 #include <stdbool.h>
 #include <stdint.h>
@@ -55,26 +54,20 @@ int main(int argc, char ** argv)
 {
 	SDL_Event event;
 	bool quit = false;
-	int width = 0, height = 0, positionX = 0, positionY = 0, velocityX = 0, velocityY = 0;
+	int width = 0, height = 0;
 	uint32_t rendererFlags = SDL_RENDERER_ACCELERATED;
-	
+	long positionX = 320, positionY = 320, velocityX = 0, velocityY = 0;
+	bool accelLeft = false, accelRight = false, accelUp = false, accelDown = false;
+
 	// Initialize the SDL library, video, sound, and input:
 	if (SDL_Init(SDL_INIT_EVERYTHING) != 0)
 	{
 		printf("SDL Initialization Error: %s\n", SDL_GetError());
 	}
-
-	IMG_Init(IMG_INIT_PNG);
 	
 	// Create an SDL window and rendering context in that window:
 	SDL_Window * window = SDL_CreateWindow("SDL_TEST", SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, 640, 640, 0);
 	SDL_Renderer * renderer = SDL_CreateRenderer(window, -1, rendererFlags);
-
-	SDL_Texture * targetTexture;
-	targetTexture = IMG_LoadTexture(renderer, "./02-TGT.png");
-	SDL_Rect targetText;
-	targetText.w = 16;
-	targetText.h = 8;
 	
 	// Enable resizing the window:
 	SDL_SetWindowResizable(window, SDL_TRUE);
@@ -91,28 +84,61 @@ int main(int argc, char ** argv)
 					quit = true;
 					break;
 				}
+				// Begin accelerating in the direction that is pressed:
 				case SDL_KEYDOWN:
 				{
 					switch (event.key.keysym.sym)
 					{
 						case SDLK_LEFT:
 						{
-							velocityX += -1;
+							accelLeft = true;
 							break;
 						}
 						case SDLK_RIGHT:
 						{
-							velocityX +=  1;
+							accelRight = true;
 							break;
 						}
 						case SDLK_UP:
 						{
-							velocityY += -1;
+							accelUp = true;
 							break;
 						}
 						case SDLK_DOWN:
 						{
-							velocityY += 1;
+							accelDown = true;
+							break;
+						}					  
+						default:
+						{
+							break;
+						}
+					}
+					break;
+				}
+				// Stop accelerating in the direction that is released:
+				case SDL_KEYUP:
+				{
+					switch (event.key.keysym.sym)
+					{
+						case SDLK_LEFT:
+						{
+							accelLeft = false;
+							break;
+						}
+						case SDLK_RIGHT:
+						{
+							accelRight = false;
+							break;
+						}
+						case SDLK_UP:
+						{
+							accelUp = false;
+							break;
+						}
+						case SDLK_DOWN:
+						{
+							accelDown = false;
 							break;
 						}
 						default:
@@ -129,9 +155,81 @@ int main(int argc, char ** argv)
             }
         }
 
+		// Accelerate:
+		if(accelLeft)
+		{
+			velocityX -= 2;
+		}
+
+		if(accelRight)
+		{
+			velocityX += 2;
+		}
+
+		if(accelUp)
+		{
+			velocityY -= 2;
+		}
+
+		if(accelDown)
+		{
+			velocityY += 2;
+		}
+
+		// Limit velocity:
+		if(velocityX > 10)
+		{
+			velocityX = 10;
+		}
+		if(velocityY > 10)
+		{
+			velocityY = 10;
+		}
+		if(velocityX < -10)
+		{
+			velocityX = -10;
+		}
+		if(velocityY < -10)
+		{
+			velocityY = -10;
+		}
+		
+		// Deccelerate:
+		if(velocityX != 0)
+		{
+			velocityX = (velocityX < 0) ? velocityX + 1 : velocityX - 1;
+		}
+
+		if(velocityY != 0)
+		{
+			velocityY = (velocityY < 0) ? velocityY + 1 : velocityY - 1;
+		}
+		
 		// Move the position:
-		positionX += velocityX;
-		positionY += velocityY;
+		if(velocityX != 0)
+		{
+			positionX += velocityX;
+			if(positionX < 0)
+			{
+				positionX = 0;
+			}
+			if(positionX > 640)
+			{
+				positionX = 640;
+			}
+		}
+		if(velocityY != 0)
+		{
+			positionY += velocityY;
+			if(positionY < 0)
+			{
+				positionY = 0;
+			}
+			if(positionY > 640)
+			{
+				positionY = 640;
+			}
+		}
 		
 		// Store the window's current width and height:
 		SDL_GetWindowSize(window, &width, &height);
@@ -151,23 +249,15 @@ int main(int argc, char ** argv)
 		// Draw a circle around the position pointer:
 		DrawCircle(renderer, positionX, positionY, 15);
 
-		// Set the rect at the correct position to put the TGT down:
-		targetText.x = positionX + 20;
-		targetText.y = positionY - 4;
-		if(positionX < width/2)
-		{
-			targetText.x = positionX - 36;
-		}
-		SDL_RenderCopy(renderer, targetTexture, NULL, &targetText);
 		// Present the rendered graphics:
 		SDL_RenderPresent(renderer);
 
 		// Delay enough so that we run at 144 frames:
-		SDL_Delay(1000 / 144);
+		SDL_Delay(1000 / 60);
 	}
 	return 0;
 }
 // ===========================================================================================
 // Local Variables:
-// compile-command: "gcc `sdl2-config --libs --cflags` SDL2-Experiment-02.c  -lSDL2_image -lm"
+// compile-command: "gcc `sdl2-config --libs --cflags` SDL2-Experiment-03.c  -lm"
 // End:
