@@ -1,4 +1,4 @@
-// SDL Experiment 08, Barra Ó Catháin.
+// SDL Experiment 09, Barra Ó Catháin.
 // ===================================
 #include <SDL2/SDL.h>
 #include <SDL2/SDL_timer.h>
@@ -28,6 +28,13 @@ static inline double normalizeXYVector(xyVector * vector)
 	return magnitude;
 }
 
+static inline void rotateXYVector(xyVector * vector, double degrees)
+{
+	double xComponent = vector->xComponent, yComponent = vector->yComponent;
+	vector->xComponent = (cos(degrees * 0.01745329) * xComponent) - (sin(degrees * 0.01745329) * yComponent);
+	vector->yComponent = (sin(degrees * 0.01745329) * xComponent) + (cos(degrees * 0.01745329) * yComponent);
+}
+
 // Add vector B to vector A:
 static inline void addXYVector(xyVector * vectorA, xyVector * vectorB)
 {
@@ -52,7 +59,7 @@ void DrawCircle(SDL_Renderer * renderer, int32_t centreX, int32_t centreY, int32
 {
    const int32_t diameter = (radius * 2);
 
-   int32_t x = (radius - 1);
+   int32_t x = (radius - 1); 
    int32_t y = 0;
    int32_t tx = 1;
    int32_t ty = 1;
@@ -89,20 +96,20 @@ void DrawCircle(SDL_Renderer * renderer, int32_t centreX, int32_t centreY, int32
 int main(int argc, char ** argv)
 {
 	SDL_Event event;
-	bool quit = false;
+	int width = 0, height = 0;
 	long positionX = 0, positionY = 0;
-	int width = 0, height = 0, mouseX = 0, mouseY = 0;
 	uint32_t rendererFlags = SDL_RENDERER_ACCELERATED;
-	double deltaTime = 0, gravityMagnitude = 0, gravityAcceleration = 0;
+	double deltaTime = 0, gravityMagnitude = 0, gravityAcceleration = 0;	
 	uint64_t thisFrameTime = SDL_GetPerformanceCounter(), lastFrameTime = 0;
-	xyVector positionVector = {100, 100}, velocityVector = {20, 0}, gravityVector = {0, 0};
+	bool quit = false, rotatingClockwise = false, rotatingAnticlockwise = false, accelerating = false;
+	xyVector positionVector = {100, 100}, velocityVector = {0, 0}, gravityVector = {0, 0}, engineVector = {0.1, 0};
 	
 	// Initialize the SDL library, video, sound, and input:
 	if (SDL_Init(SDL_INIT_EVERYTHING) != 0)
 	{
 		printf("SDL Initialization Error: %s\n", SDL_GetError());
 	}
-	
+
 	// Create an SDL window and rendering context in that window:
 	SDL_Window * window = SDL_CreateWindow("SDL_TEST", SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, 640, 640, 0);
 	SDL_Renderer * renderer = SDL_CreateRenderer(window, -1, rendererFlags);
@@ -126,6 +133,58 @@ int main(int argc, char ** argv)
 					quit = true;
 					break;
 				}
+				case SDL_KEYDOWN:
+				{
+					switch (event.key.keysym.sym)
+					{
+						case SDLK_LEFT:
+						{						
+							rotatingAnticlockwise = true;
+							break;
+						}
+						case SDLK_RIGHT:
+						{
+							rotatingClockwise = true;
+							break;
+						}
+						case SDLK_UP:
+						{
+							accelerating = true;
+							break;
+						}
+						default:
+						{
+							break;
+						}
+					}
+					break;
+				}
+				case SDL_KEYUP:
+				{
+					switch (event.key.keysym.sym)
+					{
+						case SDLK_LEFT:
+						{
+							rotatingAnticlockwise = false;
+							break;
+						}
+						case SDLK_RIGHT:
+						{
+							rotatingClockwise = false;
+							break;
+						}
+						case SDLK_UP:
+						{
+							accelerating = false;
+							break;
+						}
+						default:
+						{
+							break;
+						}
+					}
+					break;
+				}
 				default:
 				{
 					break;
@@ -136,25 +195,16 @@ int main(int argc, char ** argv)
         // Store the window's current width and height:
 		SDL_GetWindowSize(window, &width, &height);
 
-		// Store the mouse pointer's current position in the window:
-		SDL_GetMouseState(&mouseX, &mouseY);
-
 		// Calculate the vector between the star and ship:
-		xyVectorBetweenPoints(positionVector.xComponent, positionVector.yComponent, mouseX, mouseY, &gravityVector);
+		xyVectorBetweenPoints(positionVector.xComponent, positionVector.yComponent, width/2, height/2, &gravityVector);
 
 		// Make it into a unit vector:
 		gravityMagnitude = normalizeXYVector(&gravityVector);
 
 		// Calculate the gravity between the star and ship:
-		if(gravityMagnitude > 45)
-		{
-			gravityAcceleration = 2 * (2500 / pow(gravityMagnitude, 2));
-		}
-		else
-		{
-			gravityAcceleration = 0;
-			multiplyXYVector(&velocityVector, -0.98);
-		}
+		gravityAcceleration = (gravityMagnitude >= 45) ?
+			0.5 * (2500 / pow(gravityMagnitude, 2)):
+			0;
 		
 		// Scale the vector:
 		multiplyXYVector(&gravityVector, gravityAcceleration);
@@ -180,10 +230,23 @@ int main(int argc, char ** argv)
 			positionVector.yComponent = height;
 			velocityVector.yComponent *= 0.6;
 		}
-
+		// Rotate the engine vector if needed:
+		if(rotatingClockwise)
+		{
+			rotateXYVector(&engineVector, 0.1);
+		}
+		if(rotatingAnticlockwise)
+		{
+			rotateXYVector(&engineVector, -0.1);
+		}
+		
 		// Calculate the new current velocity:
 		addXYVectorDeltaScaled(&velocityVector, &gravityVector, deltaTime);
-
+		if(accelerating)
+		{
+			addXYVectorDeltaScaled(&velocityVector, &engineVector, deltaTime);
+		}
+		
 		// Calculate the new position:
 		addXYVectorDeltaScaled(&positionVector, &velocityVector, deltaTime);
 		
@@ -206,22 +269,27 @@ int main(int argc, char ** argv)
 		SDL_SetRenderDrawColor(renderer, 255, 255, 0, 255);
 
 		// Draw a circle in the center as the star:
-		DrawCircle(renderer, mouseX, mouseY, 30);
+		DrawCircle(renderer, width/2, height/2, 30);
 
 		// Draw a line representing the velocity:
 		SDL_RenderDrawLine(renderer, positionX, positionY,
-						   (long)(positionVector.xComponent + velocityVector.xComponent * 3),
-						   (long)(positionVector.yComponent + velocityVector.yComponent * 3));
+						   (long)(positionVector.xComponent + velocityVector.xComponent * 15),
+						   (long)(positionVector.yComponent + velocityVector.yComponent * 15));
+
+		// Set the colour to blue:
+		SDL_SetRenderDrawColor(renderer, 0, 0, 255, 255);
+
+		// Draw a line showing the direction the engine will accelerate:
+		SDL_RenderDrawLine(renderer, positionX, positionY,
+						   (long)(positionVector.xComponent + engineVector.xComponent * 300),
+						   (long)(positionVector.yComponent + engineVector.yComponent * 300));
 		
 		// Present the rendered graphics:
 		SDL_RenderPresent(renderer);
-
-		// Delay enough so that we run at 60 frames:
-		SDL_Delay(1000 / 144);
 	}
 	return 0;
 }
 // ===========================================================================================
 // Local Variables:
-// compile-command: "gcc `sdl2-config --libs --cflags` SDL2-Experiment-08.c -lm"
+// compile-command: "gcc `sdl2-config --libs --cflags` SDL2-Experiment-09.c  -lm"
 // End:
