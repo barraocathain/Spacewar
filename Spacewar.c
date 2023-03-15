@@ -1,4 +1,4 @@
-// SDL Experiment 07, Barra Ó Catháin.
+// SDL Experiment 08, Barra Ó Catháin.
 // ===================================
 #include <SDL2/SDL.h>
 #include <SDL2/SDL_timer.h>
@@ -90,11 +90,11 @@ int main(int argc, char ** argv)
 {
 	SDL_Event event;
 	bool quit = false;
-	int width = 0, height = 0;
-	uint32_t rendererFlags = SDL_RENDERER_ACCELERATED;
-	double deltaTime = 0, gravityMagnitude = 0, gravityAcceleration = 0;	
-	uint64_t thisFrameTime = SDL_GetPerformanceCounter(), lastFrameTime = 0;
 	long positionX = 0, positionY = 0;
+	int width = 0, height = 0, mouseX = 0, mouseY = 0;
+	uint32_t rendererFlags = SDL_RENDERER_ACCELERATED;
+	double deltaTime = 0, gravityMagnitude = 0, gravityAcceleration = 0;
+	uint64_t thisFrameTime = SDL_GetPerformanceCounter(), lastFrameTime = 0;
 	xyVector positionVector = {100, 100}, velocityVector = {20, 0}, gravityVector = {0, 0};
 	
 	// Initialize the SDL library, video, sound, and input:
@@ -136,16 +136,25 @@ int main(int argc, char ** argv)
         // Store the window's current width and height:
 		SDL_GetWindowSize(window, &width, &height);
 
+		// Store the mouse pointer's current position in the window:
+		SDL_GetMouseState(&mouseX, &mouseY);
+
 		// Calculate the vector between the star and ship:
-		xyVectorBetweenPoints(positionVector.xComponent, positionVector.yComponent, width/2, height/2, &gravityVector);
+		xyVectorBetweenPoints(positionVector.xComponent, positionVector.yComponent, mouseX, mouseY, &gravityVector);
 
 		// Make it into a unit vector:
 		gravityMagnitude = normalizeXYVector(&gravityVector);
 
 		// Calculate the gravity between the star and ship:
-		gravityAcceleration = (gravityMagnitude > 15) ?
-			2 * (2500 / pow(gravityMagnitude, 2)):
-			0.02 * (2500 / pow(gravityMagnitude, 2));
+		if(gravityMagnitude > 45)
+		{
+			gravityAcceleration = 2 * (2500 / pow(gravityMagnitude, 2));
+		}
+		else
+		{
+			gravityAcceleration = 0;
+			multiplyXYVector(&velocityVector, -0.98);
+		}
 		
 		// Scale the vector:
 		multiplyXYVector(&gravityVector, gravityAcceleration);
@@ -197,7 +206,7 @@ int main(int argc, char ** argv)
 		SDL_SetRenderDrawColor(renderer, 255, 255, 0, 255);
 
 		// Draw a circle in the center as the star:
-		DrawCircle(renderer, width/2, height/2, 30);
+		DrawCircle(renderer, mouseX, mouseY, 30);
 
 		// Draw a line representing the velocity:
 		SDL_RenderDrawLine(renderer, positionX, positionY,
@@ -206,10 +215,13 @@ int main(int argc, char ** argv)
 		
 		// Present the rendered graphics:
 		SDL_RenderPresent(renderer);
+
+		// Delay enough so that we run at 60 frames:
+		SDL_Delay(1000 / 144);
 	}
 	return 0;
 }
 // ===========================================================================================
 // Local Variables:
-// compile-command: "gcc `sdl2-config --libs --cflags` SDL2-Experiment-07.c  -lm"
+// compile-command: "gcc `sdl2-config --libs --cflags` SDL2-Experiment-08.c -lm"
 // End:
