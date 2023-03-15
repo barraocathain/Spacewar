@@ -1,4 +1,4 @@
-// SDL Experiment 06, Barra Ó Catháin.
+// SDL Experiment 07, Barra Ó Catháin.
 // ===================================
 #include <SDL2/SDL.h>
 #include <SDL2/SDL_timer.h>
@@ -6,6 +6,48 @@
 #include <stdbool.h>
 #include <stdint.h>
 
+typedef struct xyVector
+{
+	double xComponent;
+	double yComponent;
+} xyVector;
+
+// Calculate the vector from point A to point B:
+static inline void xyVectorBetweenPoints(long ax, long ay, long bx, long by, xyVector * vector)
+{
+	vector->xComponent = bx - ax;
+	vector->yComponent = by - ay;
+}
+
+// Normalize a vector, returning the magnitude:
+static inline double normalizeXYVector(xyVector * vector)
+{
+	double magnitude = sqrt(pow(vector->xComponent, 2) + pow(vector->yComponent, 2));
+	vector->xComponent /= magnitude;
+	vector->yComponent /= magnitude;
+	return magnitude;
+}
+
+// Add vector B to vector A:
+static inline void addXYVector(xyVector * vectorA, xyVector * vectorB)
+{
+	vectorA->xComponent += vectorB->xComponent;
+	vectorA->yComponent += vectorB->yComponent; 
+}
+
+// Add vector B to vector A, scaled for units per frame:
+static inline void addXYVectorDeltaScaled(xyVector * vectorA, xyVector * vectorB, double deltaTime)
+{
+	vectorA->xComponent += vectorB->xComponent * (0.001 * deltaTime) * 60;
+	vectorA->yComponent += vectorB->yComponent * (0.001 * deltaTime) * 60; 
+}
+
+// Multiply a vector by a scalar constant:
+static inline void multiplyXYVector(xyVector * vector, double scalar)
+{	
+	vector->xComponent *= scalar;
+	vector->yComponent *= scalar;
+}
 void DrawCircle(SDL_Renderer * renderer, int32_t centreX, int32_t centreY, int32_t radius)
 {
    const int32_t diameter = (radius * 2);
@@ -49,12 +91,12 @@ int main(int argc, char ** argv)
 	SDL_Event event;
 	bool quit = false;
 	int width = 0, height = 0;
-	uint64_t thisFrameTime = SDL_GetPerformanceCounter(), lastFrameTime = 0;
 	uint32_t rendererFlags = SDL_RENDERER_ACCELERATED;
-	double posX = 0, posY = 0, deltaTime = 0;
+	double deltaTime = 0, gravityMagnitude = 0, gravityAcceleration = 0;	
+	uint64_t thisFrameTime = SDL_GetPerformanceCounter(), lastFrameTime = 0;
 	long positionX = 0, positionY = 0;
-	double velocityX = 20, velocityY = 0, gravityX = 0, gravityY = 0, gravityMagnitude = 0, gravityAcceleration = 0;
-
+	xyVector positionVector = {100, 100}, velocityVector = {20, 0}, gravityVector = {0, 0};
+	
 	// Initialize the SDL library, video, sound, and input:
 	if (SDL_Init(SDL_INIT_EVERYTHING) != 0)
 	{
@@ -94,62 +136,50 @@ int main(int argc, char ** argv)
         // Store the window's current width and height:
 		SDL_GetWindowSize(window, &width, &height);
 
-		// Calculate the gravity vector:
 		// Calculate the vector between the star and ship:
-		gravityX = (width/2 - posX);
-		gravityY = (height/2 - posY);
+		xyVectorBetweenPoints(positionVector.xComponent, positionVector.yComponent, width/2, height/2, &gravityVector);
 
 		// Make it into a unit vector:
-		gravityMagnitude = sqrt(pow(gravityX, 2) + pow(gravityY, 2));
-		gravityX /= gravityMagnitude;
-		gravityY /= gravityMagnitude;
-		
-		// Calculate the gravity between them and scale the vector:
-		if(gravityMagnitude > 15)
-		{
-			gravityAcceleration = 2 * (2500 / pow(gravityMagnitude, 2));
-			gravityX *= gravityAcceleration;
-			gravityY *= gravityAcceleration;
-		}
-		else
-		{
-			gravityAcceleration = 0.02 * (2500 / pow(gravityMagnitude, 2));
-			gravityX *= gravityAcceleration;
-			gravityY *= gravityAcceleration;
-		}
+		gravityMagnitude = normalizeXYVector(&gravityVector);
 
+		// Calculate the gravity between the star and ship:
+		gravityAcceleration = (gravityMagnitude > 15) ?
+			2 * (2500 / pow(gravityMagnitude, 2)):
+			0.02 * (2500 / pow(gravityMagnitude, 2));
+		
+		// Scale the vector:
+		multiplyXYVector(&gravityVector, gravityAcceleration);
+		
 		// Wrap the position if the ship goes off-screen:
-		if(posX > width + 15)
+		if(positionVector.xComponent > width + 15)
 		{
-			posX = 0;
-			velocityX *= 0.6;
+			positionVector.xComponent = 0;
+			velocityVector.xComponent *= 0.6;
 		}
-		if(posY > height + 15)
+		if(positionVector.yComponent > height + 15)
 		{
-			posY = 0;
-			velocityY *= 0.6;
+			positionVector.yComponent = 0;
+			velocityVector.yComponent *= 0.6;
 		}
-		if(posX < -15)
+		if(positionVector.xComponent < -15)
 		{
-			posX = width;
-			velocityX *= 0.6;
+			positionVector.xComponent = width;
+			velocityVector.xComponent *= 0.6;
 		}
-		if(posY < -15)
+		if(positionVector.yComponent < -15)
 		{
-			posY = height;
-			velocityY *= 0.6;
+			positionVector.yComponent = height;
+			velocityVector.yComponent *= 0.6;
 		}
 
 		// Calculate the new current velocity:
-		velocityX += gravityX * (deltaTime * 0.001) * 60;
-		velocityY += gravityY * (deltaTime * 0.001) * 60;
+		addXYVectorDeltaScaled(&velocityVector, &gravityVector, deltaTime);
 
 		// Calculate the new position:
-		posX += velocityX * (deltaTime * 0.001) * 60;
-		posY += velocityY * (deltaTime * 0.001) * 60;
-
-		positionX = (long)posX;
-		positionY = (long)posY;
+		addXYVectorDeltaScaled(&positionVector, &velocityVector, deltaTime);
+		
+		positionX = (long)positionVector.xComponent;
+		positionY = (long)positionVector.yComponent;
 
 		// Set the colour to black:
 		SDL_SetRenderDrawColor(renderer, 0, 0, 0, 255);
@@ -170,7 +200,9 @@ int main(int argc, char ** argv)
 		DrawCircle(renderer, width/2, height/2, 30);
 
 		// Draw a line representing the velocity:
-		SDL_RenderDrawLine(renderer, positionX, positionY, (long)(posX + velocityX * 3), (long)(posY + velocityY * 3));
+		SDL_RenderDrawLine(renderer, positionX, positionY,
+						   (long)(positionVector.xComponent + velocityVector.xComponent * 3),
+						   (long)(positionVector.yComponent + velocityVector.yComponent * 3));
 		
 		// Present the rendered graphics:
 		SDL_RenderPresent(renderer);
@@ -179,5 +211,5 @@ int main(int argc, char ** argv)
 }
 // ===========================================================================================
 // Local Variables:
-// compile-command: "gcc `sdl2-config --libs --cflags` SDL2-Experiment-06.c  -lm"
+// compile-command: "gcc `sdl2-config --libs --cflags` SDL2-Experiment-07.c  -lm"
 // End:
