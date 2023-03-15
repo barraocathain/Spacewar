@@ -1,4 +1,4 @@
-// SDL Experiment 03, Barra Ó Catháin.
+// SDL Experiment 04, Barra Ó Catháin.
 // ===================================
 #include <SDL2/SDL.h>
 #include <SDL2/SDL_timer.h>
@@ -181,18 +181,12 @@ int main(int argc, char ** argv)
 		{
 			velocityX = 10;
 		}
-		if(velocityY > 10)
-		{
-			velocityY = 10;
-		}
+
 		if(velocityX < -10)
 		{
 			velocityX = -10;
 		}
-		if(velocityY < -10)
-		{
-			velocityY = -10;
-		}
+
 		
 		// Deccelerate:
 		if(velocityX != 0)
@@ -200,10 +194,16 @@ int main(int argc, char ** argv)
 			velocityX = (velocityX < 0) ? velocityX + 1 : velocityX - 1;
 		}
 
-		if(velocityY != 0)
+		if(positionY < 640)
 		{
-			velocityY = (velocityY < 0) ? velocityY + 1 : velocityY - 1;
+			velocityY += 1;
 		}
+		if(positionY >= 640 && velocityY !=0 && !accelUp)
+		{
+			velocityY *= -1;
+			velocityY += 1;
+		}
+
 		
 		// Move the position:
 		if(velocityX != 0)
@@ -211,11 +211,11 @@ int main(int argc, char ** argv)
 			positionX += velocityX;
 			if(positionX < 0)
 			{
-				positionX = 0;
+				positionX = 640;
 			}
 			if(positionX > 640)
 			{
-				positionX = 640;
+				positionX = 0;
 			}
 		}
 		if(velocityY != 0)
@@ -243,9 +243,6 @@ int main(int argc, char ** argv)
 		// Set the colour to yellow:
 		SDL_SetRenderDrawColor(renderer, 255, 255, 0, 255);
 		
-		// Draw a line from the center of the window to the position pointer:
-		SDL_RenderDrawLine(renderer, width/2, height/2, positionX, positionY);
-
 		// Draw a circle around the position pointer:
 		DrawCircle(renderer, positionX, positionY, 15);
 
@@ -259,5 +256,5 @@ int main(int argc, char ** argv)
 }
 // ===========================================================================================
 // Local Variables:
-// compile-command: "gcc `sdl2-config --libs --cflags` SDL2-Experiment-03.c  -lm"
+// compile-command: "gcc `sdl2-config --libs --cflags` SDL2-Experiment-04.c  -lm"
 // End:
