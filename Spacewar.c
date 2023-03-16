@@ -1,4 +1,4 @@
-// SDL Experiment 11, Barra Ó Catháin.
+// SDL Experiment 12, Barra Ó Catháin.
 // ===================================
 #include <SDL2/SDL.h>
 #include <SDL2/SDL_image.h>
@@ -107,12 +107,12 @@ int main(int argc, char ** argv)
 {
 	SDL_Event event;
 	int width = 0, height = 0;
-	long positionX = 0, positionY = 0;
 	uint32_t rendererFlags = SDL_RENDERER_ACCELERATED;
 	uint64_t thisFrameTime = SDL_GetPerformanceCounter(), lastFrameTime = 0;
+	long positionX = 512, positionY = 512, starPositionX = 0, starPositionY = 0;
 	double deltaTime = 0, gravityMagnitude = 0, gravityAcceleration = 0, frameAccumulator = 0;	
 	bool quit = false, rotatingClockwise = false, rotatingAnticlockwise = false, accelerating = false;
-	xyVector positionVector = {100, 100}, velocityVector = {0, 0}, gravityVector = {0, 0}, engineVector = {0.08, 0}, upVector = {0, 0.1};
+	xyVector positionVector = {512, 512}, velocityVector = {1, 0}, gravityVector = {0, 0}, engineVector = {0.16, 0}, upVector = {0, 0.1};
 
 	// Initialize the SDL library, video, sound, and input:
 	if (SDL_Init(SDL_INIT_EVERYTHING) != 0)
@@ -130,18 +130,18 @@ int main(int argc, char ** argv)
 	shipRect.h = 32;
 	
 	// Create an SDL window and rendering context in that window:
-	SDL_Window * window = SDL_CreateWindow("SDL_TEST", SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, 640, 640, 0);
+	SDL_Window * window = SDL_CreateWindow("SDL_TEST", SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, 700, 700, 0);
 	SDL_Renderer * renderer = SDL_CreateRenderer(window, -1, rendererFlags);
 
 	// Load in all of our textures:
 	SDL_Texture * idleTexture, * acceleratingTexture, * clockwiseTexture, * anticlockwiseTexture, * currentTexture,
 	    * acceleratingTexture2;
 	
-	idleTexture = IMG_LoadTexture(renderer, "./11-Ship-Idle.png");
-	clockwiseTexture = IMG_LoadTexture(renderer, "./11-Ship-Clockwise.png");
-	acceleratingTexture = IMG_LoadTexture(renderer, "./11-Ship-Accelerating.png");
-	anticlockwiseTexture = IMG_LoadTexture(renderer, "./11-Ship-Anticlockwise.png");
-	acceleratingTexture2 = IMG_LoadTexture(renderer, "./11-Ship-Accelerating-Frame-2.png");
+	idleTexture = IMG_LoadTexture(renderer, "./Experiment-12-Images/Ship-Idle.png");
+	clockwiseTexture = IMG_LoadTexture(renderer, "./Experiment-12-Images/Ship-Clockwise.png");
+	acceleratingTexture = IMG_LoadTexture(renderer, "./Experiment-12-Images/Ship-Accelerating.png");
+	anticlockwiseTexture = IMG_LoadTexture(renderer, "./Experiment-12-Images/Ship-Anticlockwise.png");
+	acceleratingTexture2 = IMG_LoadTexture(renderer, "./Experiment-12-Images/Ship-Accelerating-Frame-2.png");
 
 	// Enable resizing the window:
 	SDL_SetWindowResizable(window, SDL_TRUE);
@@ -222,57 +222,75 @@ int main(int argc, char ** argv)
             }
         }
 
+		// Wrap the position if the ship goes interstellar:
+		if(positionVector.xComponent > 4096)
+		{
+			positionVector.xComponent = -2000;
+			velocityVector.xComponent *= 0.9;
+		}
+		else if(positionVector.xComponent < -4096)
+		{
+			positionVector.xComponent = 2000;
+			velocityVector.xComponent *= 0.9;
+		}
+
+		if(positionVector.yComponent > 4096)
+		{
+			positionVector.yComponent = -2000;
+			velocityVector.yComponent *= 0.9;
+		}
+		else if(positionVector.yComponent < -4096)
+		{
+			positionVector.yComponent = 2000;
+			velocityVector.yComponent *= 0.9;
+		}
+
         // Store the window's current width and height:
 		SDL_GetWindowSize(window, &width, &height);
 
 		// Calculate the vector between the star and ship:
-		xyVectorBetweenPoints(positionVector.xComponent, positionVector.yComponent, width/2, height/2, &gravityVector);
-
+		xyVectorBetweenPoints(positionVector.xComponent, positionVector.yComponent, starPositionX, starPositionY, &gravityVector);
+		
 		// Make it into a unit vector:
 		gravityMagnitude = normalizeXYVector(&gravityVector);
 
 		// Calculate the gravity between the star and ship:
-		gravityAcceleration = (gravityMagnitude >= 45) ?
-			(2500 / pow(gravityMagnitude, 2)):
-			0;
+		if(gravityMagnitude != 0)
+		{
+			if(gravityMagnitude >= 215)
+			{
+				gravityAcceleration = 10 * (9000 / (pow(gravityMagnitude, 2)));
+			}
+			else
+			{
+				gravityAcceleration = 0.5 * (5000 / (pow(gravityMagnitude, 2)));
+			}
+		}
+		else
+		{
+			gravityAcceleration = 1;
+		}
+
+		if(gravityAcceleration < 0.01)
+		{
+			gravityAcceleration = 0.01;
+		}
 		
 		// Scale the vector:
 		multiplyXYVector(&gravityVector, gravityAcceleration);
 		
-		// Wrap the position if the ship goes off-screen:
-		if(positionVector.xComponent > width + 15)
-		{
-			positionVector.xComponent = 0;
-			velocityVector.xComponent *= 0.6;
-		}
-		if(positionVector.yComponent > height + 15)
-		{
-			positionVector.yComponent = 0;
-			velocityVector.yComponent *= 0.6;
-		}
-		if(positionVector.xComponent < -15)
-		{
-			positionVector.xComponent = width;
-			velocityVector.xComponent *= 0.6;
-		}
-		if(positionVector.yComponent < -15)
-		{
-			positionVector.yComponent = height;
-			velocityVector.yComponent *= 0.6;
-		}
-
 		// Set the texture to idle:
 		currentTexture = idleTexture;
 		
 		// Rotate the engine vector if needed:
 		if(rotatingClockwise)
 		{
-			rotateXYVector(&engineVector, 0.1 * deltaTime);
+			rotateXYVector(&engineVector, 0.25 * deltaTime);
 			currentTexture = clockwiseTexture;
 		}
 		if(rotatingAnticlockwise)
 		{
-			rotateXYVector(&engineVector, -0.1 * deltaTime);
+			rotateXYVector(&engineVector, -0.25 * deltaTime);
 			currentTexture = anticlockwiseTexture;
 		}
 		
@@ -296,8 +314,8 @@ int main(int argc, char ** argv)
 		positionY = (long)positionVector.yComponent;
 
 		// Calculate the position of the sprite:
-		shipRect.x = positionX - 15;
-		shipRect.y = positionY - 15;
+		shipRect.x = (width/2) - 15;
+		shipRect.y = (height/2) - 15;
 		
 		// Set the colour to black:
 		SDL_SetRenderDrawColor(renderer, 0, 0, 0, 255);
@@ -311,13 +329,23 @@ int main(int argc, char ** argv)
 		// Set the colour to yellow:
 		SDL_SetRenderDrawColor(renderer, 255, 255, 0, 255);
 
-		// Draw a circle in the center as the star:
-		DrawCircle(renderer, width/2, height/2, 30);
+		// Draw a circle as the star:
+		DrawCircle(renderer, (long)(starPositionX - positionX) + width/2, (long)(starPositionY - positionY) + height/2 , 200);
 
 		// Draw a line representing the velocity:
-		SDL_RenderDrawLine(renderer, positionX, positionY,
-						   (long)(positionVector.xComponent + velocityVector.xComponent * 15),
-						   (long)(positionVector.yComponent + velocityVector.yComponent * 15));
+		SDL_RenderDrawLine(renderer, width/2, height/2,
+						   (long)((width/2) + velocityVector.xComponent * 15),
+	   					   (long)((height/2) + velocityVector.yComponent * 15));
+
+		// Set the colour to blue:
+		SDL_SetRenderDrawColor(renderer, 0, 0, 255, 255);
+
+		// Draw a line representing the direction of the star:
+		normalizeXYVector(&gravityVector);
+		multiplyXYVector(&gravityVector, 100);
+		SDL_RenderDrawLine(renderer, width/2, height/2,
+						   (long)((width/2) + gravityVector.xComponent),
+						   (long)((height/2) + gravityVector.yComponent));
 
 		// Present the rendered graphics:
 		SDL_RenderPresent(renderer);
@@ -326,5 +354,5 @@ int main(int argc, char ** argv)
 }
 // ===========================================================================================
 // Local Variables:
-// compile-command: "gcc `sdl2-config --libs --cflags` SDL2-Experiment-11.c -lSDL2_image -lm" 
+// compile-command: "gcc `sdl2-config --libs --cflags` SDL2-Experiment-12.c -lSDL2_image -lm" 
 // End:
