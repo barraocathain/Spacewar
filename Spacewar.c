@@ -1,4 +1,4 @@
-// SDL Experiment 13, Barra Ó Catháin.
+// SDL Experiment 14, Barra Ó Catháin.
 // ===================================
 #include <SDL2/SDL.h>
 #include <SDL2/SDL_image.h>
@@ -133,11 +133,11 @@ void calculateGravity(xyVector * starPosition, ship * shipUnderGravity)
 	{
 		if(gravityMagnitude >= 116)
 		{
-			gravityAcceleration = 0.1 * (35000 / (pow(gravityMagnitude, 2)));
+			gravityAcceleration = 0.67 * (50000 / (pow(gravityMagnitude, 2)));
 		}
 		else
 		{
-			gravityAcceleration = 0;
+			gravityAcceleration = 1;
 		}
 	}
 	else
@@ -198,16 +198,17 @@ int main(int argc, char ** argv)
 	// Create an SDL window and rendering context in that window:
 	SDL_Window * window = SDL_CreateWindow("SDL_TEST", SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, 700, 700, 0);
 	SDL_Renderer * renderer = SDL_CreateRenderer(window, -1, rendererFlags);
-
+	SDL_SetWindowTitle(window, "Spacewar!");
+	
 	// Load in all of our textures:
 	SDL_Texture * idleTexture, * acceleratingTexture, * clockwiseTexture, * anticlockwiseTexture, * currentTexture,
 	    * acceleratingTexture2;
 	
-	idleTexture = IMG_LoadTexture(renderer, "./Experiment-13-Images/Ship-Idle.png");
-	clockwiseTexture = IMG_LoadTexture(renderer, "./Experiment-13-Images/Ship-Clockwise.png");
-	acceleratingTexture = IMG_LoadTexture(renderer, "./Experiment-13-Images/Ship-Accelerating.png");
-	anticlockwiseTexture = IMG_LoadTexture(renderer, "./Experiment-13-Images/Ship-Anticlockwise.png");
-	acceleratingTexture2 = IMG_LoadTexture(renderer, "./Experiment-13-Images/Ship-Accelerating-Frame-2.png");
+	idleTexture = IMG_LoadTexture(renderer, "./Experiment-14-Images/Ship-Idle.png");
+	clockwiseTexture = IMG_LoadTexture(renderer, "./Experiment-14-Images/Ship-Clockwise.png");
+	acceleratingTexture = IMG_LoadTexture(renderer, "./Experiment-14-Images/Ship-Accelerating.png");
+	anticlockwiseTexture = IMG_LoadTexture(renderer, "./Experiment-14-Images/Ship-Anticlockwise.png");
+	acceleratingTexture2 = IMG_LoadTexture(renderer, "./Experiment-14-Images/Ship-Accelerating-Frame-2.png");
 
 	// Enable resizing the window:
 	SDL_SetWindowResizable(window, SDL_TRUE);
@@ -292,22 +293,18 @@ int main(int argc, char ** argv)
 		if(shipA.position.xComponent > 4096)
 		{
 			shipA.position.xComponent = -2000;
-			shipA.velocity.xComponent *= 0.9;
 		}
 		else if(shipA.position.xComponent < -4096)
 		{
 			shipA.position.xComponent = 2000;
-			shipA.velocity.xComponent *= 0.9;
 		}
 		if(shipA.position.yComponent > 4096)
 		{
 			shipA.position.yComponent = -2000;
-			shipA.velocity.yComponent *= 0.9;
 		}
 		else if(shipA.position.yComponent < -4096)
 		{
 			shipA.position.yComponent = 2000;
-			shipA.velocity.yComponent *= 0.9;
 		}
 
 		if(shipB.position.xComponent > 4096)
@@ -373,11 +370,11 @@ int main(int argc, char ** argv)
 		addXYVectorDeltaScaled(&shipB.position, &shipB.velocity, deltaTime);
 		
 		// Calculate the position of the sprites:
-		shipA.rectangle.x = (width/2) - 16;
-		shipA.rectangle.y = (height/2) - 16;
+		shipA.rectangle.x = (width/2) - 16 - (shipA.velocity.xComponent * 15);
+		shipA.rectangle.y = (height/2) - 16 - (shipA.velocity.yComponent * 15);
 
-		shipB.rectangle.x = (long)(((shipB.position.xComponent - shipA.position.xComponent) - 32) + width/2);
-		shipB.rectangle.y = (long)(((shipB.position.yComponent - shipA.position.yComponent) - 32) + height/2);
+		shipB.rectangle.x = (long)((((shipB.position.xComponent - shipA.position.xComponent) - 32) + width/2) - (shipA.velocity.xComponent * 15));
+		shipB.rectangle.y = (long)((((shipB.position.yComponent - shipA.position.yComponent) - 32) + height/2) - (shipA.velocity.yComponent * 15));
 		
 		// Set the colour to black:
 		SDL_SetRenderDrawColor(renderer, 0, 0, 0, 255);
@@ -395,13 +392,14 @@ int main(int argc, char ** argv)
 		SDL_SetRenderDrawColor(renderer, 255, 255, 0, 255);
 
 		// Draw a circle as the star:
-		DrawCircle(renderer, (long)(starPositionX - shipA.position.xComponent) + width/2,
-				   (long)(starPositionY - shipA.position.yComponent) + height/2, 50);
+		DrawCircle(renderer, (long)(starPositionX - shipA.position.xComponent) + width/2  - (shipA.velocity.xComponent * 15),
+				   (long)(starPositionY - shipA.position.yComponent) + height/2  - (shipA.velocity.yComponent * 15), 50);
 
 		// Draw a line representing the velocity:
-		SDL_RenderDrawLine(renderer, width/2, height/2,
-						   (long)((width/2) + shipA.velocity.xComponent * 15),
-	   					   (long)((height/2) + shipA.velocity.yComponent * 15));
+		SDL_RenderDrawLine(renderer, width/2 - (shipA.velocity.xComponent * 15),
+						   height/2  - (shipA.velocity.yComponent * 15),
+						   (long)((width/2) + shipA.velocity.xComponent * 15)  - (shipA.velocity.xComponent * 15),
+	   					   (long)((height/2) + shipA.velocity.yComponent * 15)  - (shipA.velocity.yComponent * 15));
 
 		// Set the colour to blue:
 		SDL_SetRenderDrawColor(renderer, 0, 0, 255, 255);
@@ -409,16 +407,18 @@ int main(int argc, char ** argv)
 		// Draw a line representing the direction of the star:
 		normalizeXYVector(&shipA.gravity);
 		multiplyXYVector(&shipA.gravity, 100);
-		SDL_RenderDrawLine(renderer, width/2, height/2,
-						   (long)((width/2) + shipA.gravity.xComponent),
-						   (long)((height/2) + shipA.gravity.yComponent));
+		SDL_RenderDrawLine(renderer,
+						   width/2  - (shipA.velocity.xComponent * 15),
+						   height/2  - (shipA.velocity.yComponent * 15),
+						   (width/2  - (shipA.velocity.xComponent * 15)) + shipA.gravity.xComponent,
+						   ((height/2) - (shipA.velocity.yComponent * 15)) + shipA.gravity.yComponent);
 
 		// Present the rendered graphics:
 		SDL_RenderPresent(renderer);
 	}
 	return 0;
 }
-// ===========================================================================================
+// ========================================================================================================
 // Local Variables:
-// compile-command: "gcc `sdl2-config --libs --cflags` SDL2-Experiment-13.c -lSDL2_image -lm" 
+// compile-command: "gcc `sdl2-config --libs --cflags` SDL2-Experiment-14.c -lSDL2_image -lm -o 'Spacewar!'"
 // End:
