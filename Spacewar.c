@@ -1,6 +1,7 @@
-// SDL Experiment 09, Barra Ó Catháin.
+// SDL Experiment 10, Barra Ó Catháin.
 // ===================================
 #include <SDL2/SDL.h>
+#include <SDL2/SDL_image.h>
 #include <SDL2/SDL_timer.h>
 #include <math.h>
 #include <stdbool.h>
@@ -26,6 +27,15 @@ static inline double normalizeXYVector(xyVector * vector)
 	vector->xComponent /= magnitude;
 	vector->yComponent /= magnitude;
 	return magnitude;
+}
+
+// Get the angle between vectors:
+static inline double angleBetweenVectors(xyVector * vectorA, xyVector * vectorB)
+{
+	double dotProduct = (vectorA->xComponent * vectorB->xComponent) + (vectorA->yComponent * vectorB->yComponent);
+	double determinant = (vectorA->xComponent * vectorB->yComponent) - (vectorA->yComponent * vectorB->xComponent);
+
+	return atan2(dotProduct, determinant) / 0.01745329;
 }
 
 static inline void rotateXYVector(xyVector * vector, double degrees)
@@ -102,18 +112,36 @@ int main(int argc, char ** argv)
 	double deltaTime = 0, gravityMagnitude = 0, gravityAcceleration = 0;	
 	uint64_t thisFrameTime = SDL_GetPerformanceCounter(), lastFrameTime = 0;
 	bool quit = false, rotatingClockwise = false, rotatingAnticlockwise = false, accelerating = false;
-	xyVector positionVector = {100, 100}, velocityVector = {0, 0}, gravityVector = {0, 0}, engineVector = {0.1, 0};
-	
+	xyVector positionVector = {100, 100}, velocityVector = {0, 0}, gravityVector = {0, 0}, engineVector = {0.1, 0}, upVector = {0, 0.1};
+
 	// Initialize the SDL library, video, sound, and input:
 	if (SDL_Init(SDL_INIT_EVERYTHING) != 0)
 	{
 		printf("SDL Initialization Error: %s\n", SDL_GetError());
 	}
 
+	// Initialize image loading:
+	IMG_Init(IMG_INIT_PNG);
+	SDL_SetHint(SDL_HINT_RENDER_SCALE_QUALITY, "2");
+	
+	// Create a rectangle to put the ship in:
+	SDL_Rect shipRect;
+	shipRect.w = 32;
+	shipRect.h = 32;
+	
 	// Create an SDL window and rendering context in that window:
 	SDL_Window * window = SDL_CreateWindow("SDL_TEST", SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, 640, 640, 0);
 	SDL_Renderer * renderer = SDL_CreateRenderer(window, -1, rendererFlags);
+
+	// Load in all of our textures:
+	SDL_Texture * idleTexture, * acceleratingTexture, * clockwiseTexture, * anticlockwiseTexture, * currentTexture;
 	
+	idleTexture = IMG_LoadTexture(renderer, "./10-Ship-Idle.png");
+	clockwiseTexture = IMG_LoadTexture(renderer, "./10-Ship-Clockwise.png");
+	acceleratingTexture = IMG_LoadTexture(renderer, "./10-Ship-Accelerating.png");
+	anticlockwiseTexture = IMG_LoadTexture(renderer, "./10-Ship-Anticlockwise.png");
+	
+
 	// Enable resizing the window:
 	SDL_SetWindowResizable(window, SDL_TRUE);
 
@@ -230,14 +258,20 @@ int main(int argc, char ** argv)
 			positionVector.yComponent = height;
 			velocityVector.yComponent *= 0.6;
 		}
+
+		// Set the texture to idle:
+		currentTexture = idleTexture;
+		
 		// Rotate the engine vector if needed:
 		if(rotatingClockwise)
 		{
-			rotateXYVector(&engineVector, 0.1);
+			rotateXYVector(&engineVector, 0.1 * deltaTime);
+			currentTexture = clockwiseTexture;
 		}
 		if(rotatingAnticlockwise)
 		{
-			rotateXYVector(&engineVector, -0.1);
+			rotateXYVector(&engineVector, -0.1 * deltaTime);
+			currentTexture = anticlockwiseTexture;
 		}
 		
 		// Calculate the new current velocity:
@@ -245,6 +279,7 @@ int main(int argc, char ** argv)
 		if(accelerating)
 		{
 			addXYVectorDeltaScaled(&velocityVector, &engineVector, deltaTime);
+			currentTexture = acceleratingTexture;
 		}
 		
 		// Calculate the new position:
@@ -253,17 +288,18 @@ int main(int argc, char ** argv)
 		positionX = (long)positionVector.xComponent;
 		positionY = (long)positionVector.yComponent;
 
+		// Calculate the position of the sprite:
+		shipRect.x = positionX - 15;
+		shipRect.y = positionY - 15;
+		
 		// Set the colour to black:
 		SDL_SetRenderDrawColor(renderer, 0, 0, 0, 255);
 
 		// Clear the screen, filling it with black:
 		SDL_RenderClear(renderer);
 
-		// Set the colour to green:
-		SDL_SetRenderDrawColor(renderer, 0, 255, 0, 255);
-
-		// Draw a circle "ship" around the current position:
-		DrawCircle(renderer, positionX, positionY, 15);
+		// Draw the ship:
+		SDL_RenderCopyEx(renderer, currentTexture, NULL, &shipRect, angleBetweenVectors(&engineVector, &upVector) + 90, NULL, 0);
 		
 		// Set the colour to yellow:
 		SDL_SetRenderDrawColor(renderer, 255, 255, 0, 255);
@@ -276,14 +312,6 @@ int main(int argc, char ** argv)
 						   (long)(positionVector.xComponent + velocityVector.xComponent * 15),
 						   (long)(positionVector.yComponent + velocityVector.yComponent * 15));
 
-		// Set the colour to blue:
-		SDL_SetRenderDrawColor(renderer, 0, 0, 255, 255);
-
-		// Draw a line showing the direction the engine will accelerate:
-		SDL_RenderDrawLine(renderer, positionX, positionY,
-						   (long)(positionVector.xComponent + engineVector.xComponent * 300),
-						   (long)(positionVector.yComponent + engineVector.yComponent * 300));
-		
 		// Present the rendered graphics:
 		SDL_RenderPresent(renderer);
 	}
@@ -291,5 +319,5 @@ int main(int argc, char ** argv)
 }
 // ===========================================================================================
 // Local Variables:
-// compile-command: "gcc `sdl2-config --libs --cflags` SDL2-Experiment-09.c  -lm"
+// compile-command: "gcc `sdl2-config --libs --cflags` SDL2-Experiment-10.c -lSDL2_image -lm" 
 // End:
