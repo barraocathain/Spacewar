@@ -1,4 +1,4 @@
-// SDL Experiment 10, Barra Ó Catháin.
+// SDL Experiment 11, Barra Ó Catháin.
 // ===================================
 #include <SDL2/SDL.h>
 #include <SDL2/SDL_image.h>
@@ -109,10 +109,10 @@ int main(int argc, char ** argv)
 	int width = 0, height = 0;
 	long positionX = 0, positionY = 0;
 	uint32_t rendererFlags = SDL_RENDERER_ACCELERATED;
-	double deltaTime = 0, gravityMagnitude = 0, gravityAcceleration = 0;	
 	uint64_t thisFrameTime = SDL_GetPerformanceCounter(), lastFrameTime = 0;
+	double deltaTime = 0, gravityMagnitude = 0, gravityAcceleration = 0, frameAccumulator = 0;	
 	bool quit = false, rotatingClockwise = false, rotatingAnticlockwise = false, accelerating = false;
-	xyVector positionVector = {100, 100}, velocityVector = {0, 0}, gravityVector = {0, 0}, engineVector = {0.1, 0}, upVector = {0, 0.1};
+	xyVector positionVector = {100, 100}, velocityVector = {0, 0}, gravityVector = {0, 0}, engineVector = {0.08, 0}, upVector = {0, 0.1};
 
 	// Initialize the SDL library, video, sound, and input:
 	if (SDL_Init(SDL_INIT_EVERYTHING) != 0)
@@ -134,13 +134,14 @@ int main(int argc, char ** argv)
 	SDL_Renderer * renderer = SDL_CreateRenderer(window, -1, rendererFlags);
 
 	// Load in all of our textures:
-	SDL_Texture * idleTexture, * acceleratingTexture, * clockwiseTexture, * anticlockwiseTexture, * currentTexture;
+	SDL_Texture * idleTexture, * acceleratingTexture, * clockwiseTexture, * anticlockwiseTexture, * currentTexture,
+	    * acceleratingTexture2;
 	
-	idleTexture = IMG_LoadTexture(renderer, "./10-Ship-Idle.png");
-	clockwiseTexture = IMG_LoadTexture(renderer, "./10-Ship-Clockwise.png");
-	acceleratingTexture = IMG_LoadTexture(renderer, "./10-Ship-Accelerating.png");
-	anticlockwiseTexture = IMG_LoadTexture(renderer, "./10-Ship-Anticlockwise.png");
-	
+	idleTexture = IMG_LoadTexture(renderer, "./11-Ship-Idle.png");
+	clockwiseTexture = IMG_LoadTexture(renderer, "./11-Ship-Clockwise.png");
+	acceleratingTexture = IMG_LoadTexture(renderer, "./11-Ship-Accelerating.png");
+	anticlockwiseTexture = IMG_LoadTexture(renderer, "./11-Ship-Anticlockwise.png");
+	acceleratingTexture2 = IMG_LoadTexture(renderer, "./11-Ship-Accelerating-Frame-2.png");
 
 	// Enable resizing the window:
 	SDL_SetWindowResizable(window, SDL_TRUE);
@@ -204,6 +205,7 @@ int main(int argc, char ** argv)
 						case SDLK_UP:
 						{
 							accelerating = false;
+							frameAccumulator = 0;
 							break;
 						}
 						default:
@@ -231,7 +233,7 @@ int main(int argc, char ** argv)
 
 		// Calculate the gravity between the star and ship:
 		gravityAcceleration = (gravityMagnitude >= 45) ?
-			0.5 * (2500 / pow(gravityMagnitude, 2)):
+			(2500 / pow(gravityMagnitude, 2)):
 			0;
 		
 		// Scale the vector:
@@ -279,7 +281,12 @@ int main(int argc, char ** argv)
 		if(accelerating)
 		{
 			addXYVectorDeltaScaled(&velocityVector, &engineVector, deltaTime);
+			frameAccumulator += deltaTime;
 			currentTexture = acceleratingTexture;
+			if((long)frameAccumulator % 4)
+			{
+				currentTexture = acceleratingTexture2;
+			}
 		}
 		
 		// Calculate the new position:
@@ -319,5 +326,5 @@ int main(int argc, char ** argv)
 }
 // ===========================================================================================
 // Local Variables:
-// compile-command: "gcc `sdl2-config --libs --cflags` SDL2-Experiment-10.c -lSDL2_image -lm" 
+// compile-command: "gcc `sdl2-config --libs --cflags` SDL2-Experiment-11.c -lSDL2_image -lm" 
 // End:
