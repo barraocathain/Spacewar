@@ -1,4 +1,4 @@
-// SDL Experiment 16, Barra Ó Catháin.
+// SDL Experiment 17, Barra Ó Catháin.
 // ===================================
 #include <SDL2/SDL.h>
 #include <SDL2/SDL_image.h>
@@ -212,7 +212,8 @@ int main(int argc, char ** argv)
 	}
 
 	// Check for joysticks:
-	SDL_Joystick* controller = NULL;	
+	SDL_Joystick * controller = NULL;
+	SDL_Haptic * haptic = NULL;
 	if (SDL_NumJoysticks() < 1 )
 	{
 		printf( "Warning: No joysticks connected!\n" );
@@ -225,12 +226,15 @@ int main(int argc, char ** argv)
 		{
 			printf( "Warning: Unable to open game controller! SDL Error: %s\n", SDL_GetError() );
 		}
+		haptic = SDL_HapticOpenFromJoystick(controller);
+		SDL_HapticRumbleInit(haptic);
 	}
 	
 	// Initialize image loading:
 	IMG_Init(IMG_INIT_PNG);
 	SDL_SetHint(SDL_HINT_RENDER_SCALE_QUALITY, "2");
-
+	SDL_SetHint(SDL_HINT_JOYSTICK_ALLOW_BACKGROUND_EVENTS, "1");
+	
 	// Create an SDL window and rendering context in that window:
 	SDL_Window * window = SDL_CreateWindow("SDL_TEST", SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, 700, 700, 0);
 	SDL_Renderer * renderer = SDL_CreateRenderer(window, -1, rendererFlags);
@@ -240,11 +244,11 @@ int main(int argc, char ** argv)
 	SDL_Texture * idleTexture, * acceleratingTexture, * clockwiseTexture, * anticlockwiseTexture, * currentTexture,
 	    * acceleratingTexture2;
 	
-	idleTexture = IMG_LoadTexture(renderer, "./Experiment-16-Images/Ship-Idle.png");
-	clockwiseTexture = IMG_LoadTexture(renderer, "./Experiment-16-Images/Ship-Clockwise.png");
-	acceleratingTexture = IMG_LoadTexture(renderer, "./Experiment-16-Images/Ship-Accelerating.png");
-	anticlockwiseTexture = IMG_LoadTexture(renderer, "./Experiment-16-Images/Ship-Anticlockwise.png");
-	acceleratingTexture2 = IMG_LoadTexture(renderer, "./Experiment-16-Images/Ship-Accelerating-Frame-2.png");
+	idleTexture = IMG_LoadTexture(renderer, "./Images/Ship-Idle.png");
+	clockwiseTexture = IMG_LoadTexture(renderer, "./Images/Ship-Clockwise.png");
+	acceleratingTexture = IMG_LoadTexture(renderer, "./Images/Ship-Accelerating.png");
+	anticlockwiseTexture = IMG_LoadTexture(renderer, "./Images/Ship-Anticlockwise.png");
+	acceleratingTexture2 = IMG_LoadTexture(renderer, "./Images/Ship-Accelerating-Frame-2.png");
 
 	// Enable resizing the window:
 	SDL_SetWindowResizable(window, SDL_TRUE);
@@ -273,7 +277,7 @@ int main(int argc, char ** argv)
 		else
 		{
 			rotatingClockwise = false;
-		}
+		} 
 
 		// Check for movement on the right trigger:
 		if (SDL_JoystickGetAxis(controller, 5) > 2500)
@@ -436,8 +440,12 @@ int main(int argc, char ** argv)
 		addXYVectorDeltaScaled(&shipA.velocity, &shipA.gravity, deltaTime);
 		addXYVectorDeltaScaled(&shipB.velocity, &shipB.gravity, deltaTime);
 		
-		if(accelerating)
+		if (accelerating)
 		{
+			if (controller != NULL)
+			{
+				SDL_HapticRumblePlay(haptic, (float)SDL_JoystickGetAxis(controller, 5) / 32768, 20);
+			}
 			xyVector temporary = engineVector;
 			multiplyXYVector(&engineVector, SDL_JoystickGetAxis(controller, 5) / 30000);
 			addXYVectorDeltaScaled(&shipA.velocity, &engineVector, deltaTime);
@@ -508,5 +516,5 @@ int main(int argc, char ** argv)
 }
 // ========================================================================================================
 // Local Variables:
-// compile-command: "gcc `sdl2-config --libs --cflags` SDL2-Experiment-16.c -lSDL2_image -lm -o 'Spacewar!'"
+// compile-command: "gcc `sdl2-config --libs --cflags` SDL2-Experiment-17.c -lSDL2_image -lm -o 'Spacewar!'"
 // End:
