@@ -1,4 +1,4 @@
-// SDL Experiment 17, Barra Ó Catháin.
+// Spacewar, Barra Ó Catháin.
 // ===================================
 #include <SDL2/SDL.h>
 #include <SDL2/SDL_image.h>
@@ -10,80 +10,8 @@
 #include <arpa/inet.h>
 #include <sys/socket.h>
 #include <netinet/in.h>
-
-// A 2D vector:
-typedef struct xyVector
-{
-	double xComponent;
-	double yComponent;
-} xyVector;
-
-// A struct storing the needed data to draw a ship:
-typedef struct ship
-{
-	SDL_Rect rectangle;
-	xyVector position;
-	xyVector velocity;
-	xyVector gravity;
-	int number;
-} ship;
-
-// Calculate the vector from point A to point B:
-static inline void xyVectorBetweenPoints(long ax, long ay, long bx, long by, xyVector * vector)
-{
-	vector->xComponent = bx - ax;
-	vector->yComponent = by - ay;
-}
-
-// Normalize a vector, returning the magnitude:
-static inline double normalizeXYVector(xyVector * vector)
-{
-	double magnitude = sqrt(pow(vector->xComponent, 2) + pow(vector->yComponent, 2));
-	if(magnitude != 0)
-	{
-		vector->xComponent /= magnitude;
-		vector->yComponent /= magnitude;
-	}
-	return magnitude;
-}
-
-// Get the angle between vectors:
-static inline double angleBetweenVectors(xyVector * vectorA, xyVector * vectorB)
-{
-	double dotProduct = (vectorA->xComponent * vectorB->xComponent) + (vectorA->yComponent * vectorB->yComponent);
-	double determinant = (vectorA->xComponent * vectorB->yComponent) - (vectorA->yComponent * vectorB->xComponent);
-
-	return atan2(dotProduct, determinant) / 0.01745329;
-}
-
-// Rotate XY vector by a given number of degrees:
-static inline void rotateXYVector(xyVector * vector, double degrees)
-{
-	double xComponent = vector->xComponent, yComponent = vector->yComponent;
-	vector->xComponent = (cos(degrees * 0.01745329) * xComponent) - (sin(degrees * 0.01745329) * yComponent);
-	vector->yComponent = (sin(degrees * 0.01745329) * xComponent) + (cos(degrees * 0.01745329) * yComponent);
-}
-
-// Add vector B to vector A:
-static inline void addXYVector(xyVector * vectorA, xyVector * vectorB)
-{
-	vectorA->xComponent += vectorB->xComponent;
-	vectorA->yComponent += vectorB->yComponent; 
-}
-
-// Add vector B to vector A, scaled for units per frame:
-static inline void addXYVectorDeltaScaled(xyVector * vectorA, xyVector * vectorB, double deltaTime)
-{
-	vectorA->xComponent += vectorB->xComponent * (0.001 * deltaTime) * 60;
-	vectorA->yComponent += vectorB->yComponent * (0.001 * deltaTime) * 60; 
-}
-
-// Multiply a vector by a scalar constant:
-static inline void multiplyXYVector(xyVector * vector, double scalar)
-{	
-	vector->xComponent *= scalar;
-	vector->yComponent *= scalar;
-}
+#include "xyVector.h"
+#include "spacewarPlayer.h"
 
 void DrawCircle(SDL_Renderer * renderer, int32_t centreX, int32_t centreY, int32_t radius)
 {
@@ -138,7 +66,7 @@ void calculateGravity(xyVector * starPosition, ship * shipUnderGravity)
 	{
 		if(gravityMagnitude >= 116)
 		{
-			gravityAcceleration = pow(2, (2500 / (pow(gravityMagnitude, 2)))) / 10;
+			gravityAcceleration = pow(2, (3000 / (pow(gravityMagnitude, 2)))) / 8;
 		}
 		else
 		{
@@ -163,16 +91,128 @@ void calculateGravity(xyVector * starPosition, ship * shipUnderGravity)
 ship createShip(int width, int height, double positionX, double positionY, double velocityX, double velocityY, int number)
 {
 	ship newShip;
+
+	// Player number:
+	newShip.number = number;
+	
+	// Rectangle to show the ship in:
 	newShip.rectangle.w = width;
 	newShip.rectangle.h = height;
+	
+	// Position:
 	newShip.position.xComponent = positionX;
 	newShip.position.yComponent = positionY;
+
+	// Velocity:
 	newShip.velocity.xComponent = velocityX;
 	newShip.velocity.yComponent = velocityY;
+
+	// Gravity:
 	newShip.gravity.xComponent = 0;
 	newShip.gravity.yComponent = 0;
-	newShip.number = number;
+
+	// Engine:
+	newShip.engine.yComponent = 0;
+	newShip.engine.xComponent = 0.1;   	
 	return newShip;
+}
+
+playerController createShipPlayerController(ship * ship)
+{
+	playerController newController;
+	newController.number = ship->number;
+	return newController;
+}
+
+static inline void takeNetworkInput(playerController * controller, int descriptor)
+{
+	recvfrom(descriptor, controller, sizeof(playerController), 0, NULL, NULL);
+}
+
+
+static inline void getPlayerInput(playerController * controller, int playerNumber)
+{
+	SDL_PumpEvents();
+	const uint8_t * keyboardState = SDL_GetKeyboardState(NULL);
+	if(keyboardState[SDL_SCANCODE_UP] == 1)
+	{
+		controller->accelerating = true;
+	}
+	else
+	{
+		controller->accelerating = false;
+	}
+	if(keyboardState[SDL_SCANCODE_LEFT] == 1)
+	{
+		controller->turningAnticlockwise = true;
+	}
+	else
+	{
+		controller->turningAnticlockwise = false;;
+	}
+	if(keyboardState[SDL_SCANCODE_RIGHT] == 1)
+	{
+		controller->turningClockwise = true;
+	}
+	else
+	{
+		controller->turningClockwise = false;
+	}
+	if(controller->joystick != NULL)
+	{
+		controller->turningAmount = SDL_JoystickGetAxis(controller->joystick, 0);
+		controller->acceleratingAmount = SDL_JoystickGetAxis(controller->joystick, 5);
+	}
+}
+
+void doShipInput(playerController * controller, ship * ship, xyVector starPosition, double deltaTime)
+{
+	if(controller->number == ship->number)
+	{
+		// Calculate the gravity for the ships:
+		calculateGravity(&starPosition, ship);
+				
+		// Rotate the engine vector if needed:
+		if (controller->turningClockwise)
+		{
+			rotateXYVector(&ship->engine, 0.25 * deltaTime);
+		}
+		else if (controller->turningAmount > 2500)
+		{
+			double rotationalSpeed = (controller->turningAmount / 20000);
+			rotateXYVector(&ship->engine, 0.25 * deltaTime * rotationalSpeed);
+		}
+		
+		if (controller->turningAnticlockwise)
+		{
+			rotateXYVector(&ship->engine, -0.25 * deltaTime);	
+		}
+		else if (controller->turningAmount < -2500)
+		{
+			double rotationalSpeed = (controller->turningAmount / 20000);
+			rotateXYVector(&ship->engine, 0.25 * deltaTime * rotationalSpeed);
+		}
+		
+		// Calculate the new current velocity:
+		addXYVectorDeltaScaled(&ship->velocity, &ship->gravity, deltaTime);
+
+		if (controller->acceleratingAmount > 2500)
+		{
+			xyVector temporary = ship->engine;
+			multiplyXYVector(&ship->engine, controller->acceleratingAmount/ 32748);
+			SDL_HapticRumblePlay(controller->haptic, (float)controller->acceleratingAmount / 32768, 20);
+			addXYVectorDeltaScaled(&ship->velocity, &ship->engine, deltaTime);
+			ship->engine = temporary;
+		}
+		
+		else if (controller->accelerating)
+		{
+			addXYVectorDeltaScaled(&ship->velocity, &ship->engine, deltaTime);
+		}
+		
+		// Calculate the new position:
+		addXYVectorDeltaScaled(&ship->position, &ship->velocity, deltaTime);
+	}
 }
 
 int main(int argc, char ** argv)
@@ -181,15 +221,14 @@ int main(int argc, char ** argv)
 	int width = 0, height = 0;
 	uint32_t rendererFlags = SDL_RENDERER_ACCELERATED;
 	uint64_t thisFrameTime = SDL_GetPerformanceCounter(), lastFrameTime = 0;
-	long positionX = 512, positionY = 512, starPositionX = 0, starPositionY = 0;
-	double deltaTime = 0, gravityMagnitude = 0, gravityAcceleration = 0, frameAccumulator = 0;	
+	long starPositionX = 0, starPositionY = 0;
+	double deltaTime = 0, frameAccumulator = 0;	
 	bool quit = false, rotatingClockwise = false, rotatingAnticlockwise = false, accelerating = false;
-	xyVector positionVector = {512, 512}, velocityVector = {1, 0}, gravityVector = {0, 0},
-		engineVector = {0.08, 0}, upVector = {0, 0.1}, starPosition = {0, 0};
+	xyVector engineVector = {0.85, 0}, upVector = {0, 0.1}, starPosition = {0, 0};
 
 	// Create the socket:
-	int socketFileDesc = socket(AF_INET, SOCK_DGRAM, 0);
-	if (socketFileDesc < 0)
+	int sendSocket = socket(AF_INET, SOCK_DGRAM, 0);
+	if (sendSocket < 0)
 	{
 		fprintf(stderr, "\tSocket Creation is:\t\033[33;40mRED.\033[0m Aborting launch.\n");
 		exit(0);
@@ -197,10 +236,38 @@ int main(int argc, char ** argv)
 	printf("\tSocket Creation is:\t\033[32;40mGREEN.\033[0m\n");
 
 	// Create and fill the information needed to bind to the socket:
-	struct sockaddr_in serverAddress;
-	serverAddress.sin_family = AF_INET; // IPv4
-	serverAddress.sin_addr.s_addr = inet_addr("127.0.0.1");
-	serverAddress.sin_port = htons(12000);
+	struct sockaddr_in sendAddress;
+	sendAddress.sin_family = AF_INET; // IPv4
+	sendAddress.sin_addr.s_addr = inet_addr("127.0.0.1");
+	sendAddress.sin_port = htons(12000);
+
+	int receiveSocket = socket(AF_INET, SOCK_DGRAM, 0);
+	if (receiveSocket < 0)
+	{
+		fprintf(stderr, "\tSocket Creation is:\t\033[33;40mRED.\033[0m Aborting launch.\n");
+		exit(0);
+	}
+	printf("\tSocket Creation is:\t\033[32;40mGREEN.\033[0m\n");
+
+	// Make the socket timeout:
+	struct timeval readTimeout;
+	readTimeout.tv_sec = 0;
+	readTimeout.tv_usec = 800;
+	setsockopt(receiveSocket, SOL_SOCKET, SO_RCVTIMEO, &readTimeout, sizeof(readTimeout));
+	
+	// Create and fill the information needed to bind to the socket:
+	struct sockaddr_in receiveAddress;
+	memset(&receiveAddress, 0, sizeof(receiveAddress));
+	receiveAddress.sin_family = AF_INET; // IPv4
+	receiveAddress.sin_addr.s_addr = INADDR_ANY;
+	receiveAddress.sin_port = htons(12001);
+
+	// Bind to the socket:
+	if (bind(receiveSocket, (const struct sockaddr *)&receiveAddress, sizeof(receiveAddress)) < 0)
+    {
+        perror("bind failed");
+        exit(EXIT_FAILURE);
+    }
 
 	ship shipA = createShip(32, 32, 512, 512, 1, 0, 0);
 	ship shipB = createShip(32, 32, -512, -512, 0, 1, 1);
@@ -210,32 +277,56 @@ int main(int argc, char ** argv)
 	{
 		printf("SDL Initialization Error: %s\n", SDL_GetError());
 	}
-
-	// Check for joysticks:
-	SDL_Joystick * controller = NULL;
-	SDL_Haptic * haptic = NULL;
-	if (SDL_NumJoysticks() < 1 )
-	{
-		printf( "Warning: No joysticks connected!\n" );
-	}
-	else
-	{
-		// Load joystick
-		controller = SDL_JoystickOpen(0);
-		if (controller == NULL )
-		{
-			printf( "Warning: Unable to open game controller! SDL Error: %s\n", SDL_GetError() );
-		}
-		haptic = SDL_HapticOpenFromJoystick(controller);
-		SDL_HapticRumbleInit(haptic);
-	}
 	
 	// Initialize image loading:
 	IMG_Init(IMG_INIT_PNG);
 	SDL_SetHint(SDL_HINT_RENDER_SCALE_QUALITY, "2");
 	SDL_SetHint(SDL_HINT_JOYSTICK_ALLOW_BACKGROUND_EVENTS, "1");
 	
-	// Create an SDL window and rendering context in that window:
+	playerController playerOne = createShipPlayerController(&shipA);
+	playerController playerTwo = createShipPlayerController(&shipB);
+
+	// Check for joysticks:
+	if (SDL_NumJoysticks() < 1 )
+	{
+		printf( "Warning: No joysticks connected!\n" );
+	}
+	else
+	{
+		// Load all joysticks:
+		int joystickListLength = SDL_NumJoysticks();
+		SDL_Joystick ** joysticksList = calloc(joystickListLength, sizeof(SDL_Joystick*));
+		
+		for(int index = 0; index < SDL_NumJoysticks(); index++)
+		{
+			joysticksList[index] = SDL_JoystickOpen(index);
+		}
+
+		// Choose a player joystick:
+		printf("Please press button zero on the controller you wish to use. \n");
+
+		int joystickIndex = 0;
+		while(SDL_JoystickGetButton(joysticksList[joystickIndex], 0) == 0)
+		{
+			SDL_PumpEvents();
+			joystickIndex++;
+			if(joystickIndex >= joystickListLength)
+			{
+				joystickIndex = 0;
+			}
+		}
+		
+		// Load joystick
+		playerOne.joystick = joysticksList[joystickIndex];
+		if (playerOne.joystick == NULL )
+		{
+			printf( "Warning: Unable to open game controller! SDL Error: %s\n", SDL_GetError() );
+		}
+		playerOne.haptic = SDL_HapticOpenFromJoystick(playerOne.joystick);
+		SDL_HapticRumbleInit(playerOne.haptic);
+	}
+
+		// Create an SDL window and rendering context in that window:
 	SDL_Window * window = SDL_CreateWindow("SDL_TEST", SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, 700, 700, 0);
 	SDL_Renderer * renderer = SDL_CreateRenderer(window, -1, rendererFlags);
 	SDL_SetWindowTitle(window, "Spacewar!");
@@ -249,47 +340,26 @@ int main(int argc, char ** argv)
 	acceleratingTexture = IMG_LoadTexture(renderer, "./Images/Ship-Accelerating.png");
 	anticlockwiseTexture = IMG_LoadTexture(renderer, "./Images/Ship-Anticlockwise.png");
 	acceleratingTexture2 = IMG_LoadTexture(renderer, "./Images/Ship-Accelerating-Frame-2.png");
+	currentTexture = acceleratingTexture;
 
 	// Enable resizing the window:
 	SDL_SetWindowResizable(window, SDL_TRUE);
 
+	lastFrameTime = SDL_GetPerformanceCounter();
+	thisFrameTime = SDL_GetPerformanceCounter();
+	
 	while (!quit)
 	{
 		lastFrameTime = thisFrameTime;
 		thisFrameTime = SDL_GetPerformanceCounter();
 		deltaTime = (double)(((thisFrameTime - lastFrameTime) * 1000) / (double)SDL_GetPerformanceFrequency());
 
-		// Check for left movement on the stick:
-		if (SDL_JoystickGetAxis(controller, 0) < -2500)
-		{
-			rotatingAnticlockwise = true;
-		}
-		else
-		{
-			rotatingAnticlockwise = false;
-		}
-
-		// Check for right movement on the stick:
-		if (SDL_JoystickGetAxis(controller, 0) > 2500)
-		{
-			rotatingClockwise = true;
-		}
-		else
-		{
-			rotatingClockwise = false;
-		} 
-
-		// Check for movement on the right trigger:
-		if (SDL_JoystickGetAxis(controller, 5) > 2500)
-		{
-			accelerating = true;
-		}
-		else
-		{
-			accelerating = false;
-		}
+		sendto(sendSocket, &shipA, sizeof(ship), 0, (const struct sockaddr *)&sendAddress, sizeof(sendAddress));
+		sendto(sendSocket, &shipB, sizeof(ship), 0, (const struct sockaddr *)&sendAddress, sizeof(sendAddress));
+		// Store the window's current width and height:
+		SDL_GetWindowSize(window, &width, &height);
 		
-		// Check if the user wants to quit:
+		// Check input:
 		while (SDL_PollEvent(&event))
         {
             switch (event.type)
@@ -299,65 +369,8 @@ int main(int argc, char ** argv)
 					quit = true;
 					break;
 				}
-				case SDL_KEYDOWN:
-				{
-					switch (event.key.keysym.sym)
-					{
-						case SDLK_LEFT:
-						{						
-							rotatingAnticlockwise = true;
-							break;
-						}
-						case SDLK_RIGHT:
-						{
-							rotatingClockwise = true;
-							break;
-						}
-						case SDLK_UP:
-						{
-							accelerating = true;
-							break;
-						}
-						default:
-						{
-							break;
-						}
-					}
-					break;
-				}
-				case SDL_KEYUP:
-				{
-					switch (event.key.keysym.sym)
-					{
-						case SDLK_LEFT:
-						{
-							rotatingAnticlockwise = false;
-							break;
-						}
-						case SDLK_RIGHT:
-						{
-							rotatingClockwise = false;
-							break;
-						}
-						case SDLK_UP:
-						{
-							accelerating = false;
-							frameAccumulator = 0;
-							break;
-						}
-						default:
-						{
-							break;
-						}
-					}
-					break;
-				}
-				default:
-				{
-					break;
-				}
-            }
-        }
+			}
+		}
 		
 		// Wrap the positions if the ship goes interstellar:
 		if(shipA.position.xComponent > 4096)
@@ -397,78 +410,22 @@ int main(int argc, char ** argv)
 			shipB.position.yComponent = 2000;
 			shipB.velocity.yComponent *= 0.9;
 		}
-		
-        // Store the window's current width and height:
-		SDL_GetWindowSize(window, &width, &height);
 
-		// Calculate the gravity for the ships:
-		calculateGravity(&starPosition, &shipA);
-		calculateGravity(&starPosition, &shipB);
+		// Get the needed input:
+		getPlayerInput(&playerOne, 0);
+		takeNetworkInput(&playerTwo, receiveSocket);
+
+		// Do the needed input:
+		doShipInput(&playerOne, &shipA, starPosition, deltaTime);
+		doShipInput(&playerTwo, &shipB, starPosition, deltaTime);
 		
-		// Set the texture to idle:
-		currentTexture = idleTexture;
-		
-		// Rotate the engine vector if needed:
-		if(rotatingClockwise)
-		{
-			if (SDL_JoystickGetAxis(controller, 0) > 2500)
-			{
-				double rotationalSpeed = ((double)SDL_JoystickGetAxis(controller, 0) / 20000) * -1;
-				rotateXYVector(&engineVector, -0.25 * deltaTime * rotationalSpeed);
-			}
-			else
-			{
-				rotateXYVector(&engineVector, 0.25 * deltaTime);
-			}
-			currentTexture = clockwiseTexture;
-		}
-		if(rotatingAnticlockwise)
-		{
-			if (SDL_JoystickGetAxis(controller, 0) < -2500)
-			{
-				double rotationalSpeed = ((double)SDL_JoystickGetAxis(controller, 0) / 20000) * -1;
-				rotateXYVector(&engineVector, -0.25 * deltaTime * rotationalSpeed);
-			}
-			else
-			{
-				rotateXYVector(&engineVector, -0.25 * deltaTime);
-			}
-			currentTexture = anticlockwiseTexture;
-		}
-		
-		// Calculate the new current velocity:
-		addXYVectorDeltaScaled(&shipA.velocity, &shipA.gravity, deltaTime);
-		addXYVectorDeltaScaled(&shipB.velocity, &shipB.gravity, deltaTime);
-		
-		if (accelerating)
-		{
-			if (controller != NULL)
-			{
-				SDL_HapticRumblePlay(haptic, (float)SDL_JoystickGetAxis(controller, 5) / 32768, 20);
-			}
-			xyVector temporary = engineVector;
-			multiplyXYVector(&engineVector, SDL_JoystickGetAxis(controller, 5) / 30000);
-			addXYVectorDeltaScaled(&shipA.velocity, &engineVector, deltaTime);
-			engineVector = temporary;
-			frameAccumulator += deltaTime;
-			currentTexture = acceleratingTexture;
-			if((long)frameAccumulator % 4)
-			{
-				currentTexture = acceleratingTexture2;
-			}
-		}
-		
-		// Calculate the new position:
-		addXYVectorDeltaScaled(&shipA.position, &shipA.velocity, deltaTime);
-		addXYVectorDeltaScaled(&shipB.position, &shipB.velocity, deltaTime);
-		
-		// Calculate the position of the sprites:
 		shipA.rectangle.x = (width/2) - 16 - (shipA.velocity.xComponent * 15);
 		shipA.rectangle.y = (height/2) - 16 - (shipA.velocity.yComponent * 15);
 
 		shipB.rectangle.x = (long)((((shipB.position.xComponent - shipA.position.xComponent) - 32) + width/2) - (shipA.velocity.xComponent * 15));
 		shipB.rectangle.y = (long)((((shipB.position.yComponent - shipA.position.yComponent) - 32) + height/2) - (shipA.velocity.yComponent * 15));
 		
+
 		// Set the colour to black:
 		SDL_SetRenderDrawColor(renderer, 0, 0, 0, 255);
 
@@ -477,10 +434,10 @@ int main(int argc, char ** argv)
 
 		// Draw the ship:
 		SDL_RenderCopyEx(renderer, currentTexture, NULL, &shipA.rectangle,
-						 angleBetweenVectors(&engineVector, &upVector) + 90, NULL, 0);
+						 angleBetweenVectors(&shipA.engine, &upVector) + 90, NULL, 0);
 		SDL_RenderCopyEx(renderer, currentTexture, NULL, &shipB.rectangle,
-						 angleBetweenVectors(&shipB.velocity, &upVector) + 90, NULL, 0);
-		
+						 angleBetweenVectors(&shipB.engine, &upVector) + 90, NULL, 0);
+
 		// Set the colour to yellow:
 		SDL_SetRenderDrawColor(renderer, 255, 255, 0, 255);
 
@@ -508,13 +465,10 @@ int main(int argc, char ** argv)
 
 		// Present the rendered graphics:
 		SDL_RenderPresent(renderer);
-
-		sendto(socketFileDesc, &shipA, sizeof(ship), 0, (const struct sockaddr *)&serverAddress, sizeof(serverAddress));
-		sendto(socketFileDesc, &shipB, sizeof(ship), 0, (const struct sockaddr *)&serverAddress, sizeof(serverAddress));
 	}
 	return 0;
 }
 // ========================================================================================================
 // Local Variables:
-// compile-command: "gcc `sdl2-config --libs --cflags` SDL2-Experiment-17.c -lSDL2_image -lm -o 'Spacewar!'"
+// compile-command: "gcc `sdl2-config --libs --cflags` Spacewar.c -lSDL2_image -lm -o 'Spacewar!'"
 // End:
