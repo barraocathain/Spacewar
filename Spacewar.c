@@ -1,4 +1,4 @@
-// SDL Experiment 14, Barra Ó Catháin.
+// SDL Experiment 15, Barra Ó Catháin.
 // ===================================
 #include <SDL2/SDL.h>
 #include <SDL2/SDL_image.h>
@@ -6,6 +6,10 @@
 #include <math.h>
 #include <stdbool.h>
 #include <stdint.h>
+#include <sys/types.h>
+#include <arpa/inet.h>
+#include <sys/socket.h>
+#include <netinet/in.h>
 
 // A 2D vector:
 typedef struct xyVector
@@ -21,6 +25,7 @@ typedef struct ship
 	xyVector position;
 	xyVector velocity;
 	xyVector gravity;
+	int number;
 } ship;
 
 // Calculate the vector from point A to point B:
@@ -133,11 +138,11 @@ void calculateGravity(xyVector * starPosition, ship * shipUnderGravity)
 	{
 		if(gravityMagnitude >= 116)
 		{
-			gravityAcceleration = 0.67 * (50000 / (pow(gravityMagnitude, 2)));
+			gravityAcceleration = pow(2, (2500 / (pow(gravityMagnitude, 2)))) / 10;
 		}
 		else
 		{
-			gravityAcceleration = 1;
+			gravityAcceleration = pow(2, (2500 / (pow(gravityMagnitude, 2)))) / 5;
 		}
 	}
 	else
@@ -155,7 +160,7 @@ void calculateGravity(xyVector * starPosition, ship * shipUnderGravity)
 }
 
 // Create a ship with the given parameters:
-ship createShip(int width, int height, double positionX, double positionY, double velocityX, double velocityY)
+ship createShip(int width, int height, double positionX, double positionY, double velocityX, double velocityY, int number)
 {
 	ship newShip;
 	newShip.rectangle.w = width;
@@ -166,6 +171,7 @@ ship createShip(int width, int height, double positionX, double positionY, doubl
 	newShip.velocity.yComponent = velocityY;
 	newShip.gravity.xComponent = 0;
 	newShip.gravity.yComponent = 0;
+	newShip.number = number;
 	return newShip;
 }
 
@@ -179,11 +185,26 @@ int main(int argc, char ** argv)
 	double deltaTime = 0, gravityMagnitude = 0, gravityAcceleration = 0, frameAccumulator = 0;	
 	bool quit = false, rotatingClockwise = false, rotatingAnticlockwise = false, accelerating = false;
 	xyVector positionVector = {512, 512}, velocityVector = {1, 0}, gravityVector = {0, 0},
-		engineVector = {0.04, 0}, upVector = {0, 0.1}, starPosition = {0, 0};
+		engineVector = {0.08, 0}, upVector = {0, 0.1}, starPosition = {0, 0};
+
+	// Create the socket:
+	int socketFileDesc = socket(AF_INET, SOCK_DGRAM, 0);
+	if (socketFileDesc < 0)
+	{
+		fprintf(stderr, "\tSocket Creation is:\t\033[33;40mRED.\033[0m Aborting launch.\n");
+		exit(0);
+	}
+	printf("\tSocket Creation is:\t\033[32;40mGREEN.\033[0m\n");
+
+	// Create and fill the information needed to bind to the socket:
+	struct sockaddr_in serverAddress;
+	serverAddress.sin_family = AF_INET; // IPv4
+	serverAddress.sin_addr.s_addr = inet_addr("127.0.0.1");
+	serverAddress.sin_port = htons(12000);
 
 	// Get the initial
-	ship shipA = createShip(32, 32, 512, 512, 1, 0);
-	ship shipB = createShip(32, 32, -512, -512, 0, 1);
+	ship shipA = createShip(32, 32, 512, 512, 1, 0, 0);
+	ship shipB = createShip(32, 32, -512, -512, 0, 1, 1);
 	
 	// Initialize the SDL library, video, sound, and input:
 	if (SDL_Init(SDL_INIT_EVERYTHING) != 0)
@@ -204,11 +225,11 @@ int main(int argc, char ** argv)
 	SDL_Texture * idleTexture, * acceleratingTexture, * clockwiseTexture, * anticlockwiseTexture, * currentTexture,
 	    * acceleratingTexture2;
 	
-	idleTexture = IMG_LoadTexture(renderer, "./Experiment-14-Images/Ship-Idle.png");
-	clockwiseTexture = IMG_LoadTexture(renderer, "./Experiment-14-Images/Ship-Clockwise.png");
-	acceleratingTexture = IMG_LoadTexture(renderer, "./Experiment-14-Images/Ship-Accelerating.png");
-	anticlockwiseTexture = IMG_LoadTexture(renderer, "./Experiment-14-Images/Ship-Anticlockwise.png");
-	acceleratingTexture2 = IMG_LoadTexture(renderer, "./Experiment-14-Images/Ship-Accelerating-Frame-2.png");
+	idleTexture = IMG_LoadTexture(renderer, "./Experiment-15-Images/Ship-Idle.png");
+	clockwiseTexture = IMG_LoadTexture(renderer, "./Experiment-15-Images/Ship-Clockwise.png");
+	acceleratingTexture = IMG_LoadTexture(renderer, "./Experiment-15-Images/Ship-Accelerating.png");
+	anticlockwiseTexture = IMG_LoadTexture(renderer, "./Experiment-15-Images/Ship-Anticlockwise.png");
+	acceleratingTexture2 = IMG_LoadTexture(renderer, "./Experiment-15-Images/Ship-Accelerating-Frame-2.png");
 
 	// Enable resizing the window:
 	SDL_SetWindowResizable(window, SDL_TRUE);
@@ -415,10 +436,13 @@ int main(int argc, char ** argv)
 
 		// Present the rendered graphics:
 		SDL_RenderPresent(renderer);
+
+		sendto(socketFileDesc, &shipA, sizeof(ship), 0, (const struct sockaddr *)&serverAddress, sizeof(serverAddress));
+		sendto(socketFileDesc, &shipB, sizeof(ship), 0, (const struct sockaddr *)&serverAddress, sizeof(serverAddress));
 	}
 	return 0;
 }
 // ========================================================================================================
 // Local Variables:
-// compile-command: "gcc `sdl2-config --libs --cflags` SDL2-Experiment-14.c -lSDL2_image -lm -o 'Spacewar!'"
+// compile-command: "gcc `sdl2-config --libs --cflags` SDL2-Experiment-15.c -lSDL2_image -lm -o 'Spacewar!'"
 // End:
