@@ -1,4 +1,4 @@
-// SDL Experiment 15, Barra Ó Catháin.
+// SDL Experiment 16, Barra Ó Catháin.
 // ===================================
 #include <SDL2/SDL.h>
 #include <SDL2/SDL_image.h>
@@ -142,7 +142,7 @@ void calculateGravity(xyVector * starPosition, ship * shipUnderGravity)
 		}
 		else
 		{
-			gravityAcceleration = pow(2, (2500 / (pow(gravityMagnitude, 2)))) / 5;
+			gravityAcceleration = 1;
 		}
 	}
 	else
@@ -202,7 +202,6 @@ int main(int argc, char ** argv)
 	serverAddress.sin_addr.s_addr = inet_addr("127.0.0.1");
 	serverAddress.sin_port = htons(12000);
 
-	// Get the initial
 	ship shipA = createShip(32, 32, 512, 512, 1, 0, 0);
 	ship shipB = createShip(32, 32, -512, -512, 0, 1, 1);
 	
@@ -212,6 +211,22 @@ int main(int argc, char ** argv)
 		printf("SDL Initialization Error: %s\n", SDL_GetError());
 	}
 
+	// Check for joysticks:
+	SDL_Joystick* controller = NULL;	
+	if (SDL_NumJoysticks() < 1 )
+	{
+		printf( "Warning: No joysticks connected!\n" );
+	}
+	else
+	{
+		// Load joystick
+		controller = SDL_JoystickOpen(0);
+		if (controller == NULL )
+		{
+			printf( "Warning: Unable to open game controller! SDL Error: %s\n", SDL_GetError() );
+		}
+	}
+	
 	// Initialize image loading:
 	IMG_Init(IMG_INIT_PNG);
 	SDL_SetHint(SDL_HINT_RENDER_SCALE_QUALITY, "2");
@@ -225,11 +240,11 @@ int main(int argc, char ** argv)
 	SDL_Texture * idleTexture, * acceleratingTexture, * clockwiseTexture, * anticlockwiseTexture, * currentTexture,
 	    * acceleratingTexture2;
 	
-	idleTexture = IMG_LoadTexture(renderer, "./Experiment-15-Images/Ship-Idle.png");
-	clockwiseTexture = IMG_LoadTexture(renderer, "./Experiment-15-Images/Ship-Clockwise.png");
-	acceleratingTexture = IMG_LoadTexture(renderer, "./Experiment-15-Images/Ship-Accelerating.png");
-	anticlockwiseTexture = IMG_LoadTexture(renderer, "./Experiment-15-Images/Ship-Anticlockwise.png");
-	acceleratingTexture2 = IMG_LoadTexture(renderer, "./Experiment-15-Images/Ship-Accelerating-Frame-2.png");
+	idleTexture = IMG_LoadTexture(renderer, "./Experiment-16-Images/Ship-Idle.png");
+	clockwiseTexture = IMG_LoadTexture(renderer, "./Experiment-16-Images/Ship-Clockwise.png");
+	acceleratingTexture = IMG_LoadTexture(renderer, "./Experiment-16-Images/Ship-Accelerating.png");
+	anticlockwiseTexture = IMG_LoadTexture(renderer, "./Experiment-16-Images/Ship-Anticlockwise.png");
+	acceleratingTexture2 = IMG_LoadTexture(renderer, "./Experiment-16-Images/Ship-Accelerating-Frame-2.png");
 
 	// Enable resizing the window:
 	SDL_SetWindowResizable(window, SDL_TRUE);
@@ -239,6 +254,36 @@ int main(int argc, char ** argv)
 		lastFrameTime = thisFrameTime;
 		thisFrameTime = SDL_GetPerformanceCounter();
 		deltaTime = (double)(((thisFrameTime - lastFrameTime) * 1000) / (double)SDL_GetPerformanceFrequency());
+
+		// Check for left movement on the stick:
+		if (SDL_JoystickGetAxis(controller, 0) < -2500)
+		{
+			rotatingAnticlockwise = true;
+		}
+		else
+		{
+			rotatingAnticlockwise = false;
+		}
+
+		// Check for right movement on the stick:
+		if (SDL_JoystickGetAxis(controller, 0) > 2500)
+		{
+			rotatingClockwise = true;
+		}
+		else
+		{
+			rotatingClockwise = false;
+		}
+
+		// Check for movement on the right trigger:
+		if (SDL_JoystickGetAxis(controller, 5) > 2500)
+		{
+			accelerating = true;
+		}
+		else
+		{
+			accelerating = false;
+		}
 		
 		// Check if the user wants to quit:
 		while (SDL_PollEvent(&event))
@@ -309,7 +354,7 @@ int main(int argc, char ** argv)
 				}
             }
         }
-
+		
 		// Wrap the positions if the ship goes interstellar:
 		if(shipA.position.xComponent > 4096)
 		{
@@ -362,12 +407,28 @@ int main(int argc, char ** argv)
 		// Rotate the engine vector if needed:
 		if(rotatingClockwise)
 		{
-			rotateXYVector(&engineVector, 0.25 * deltaTime);
+			if (SDL_JoystickGetAxis(controller, 0) > 2500)
+			{
+				double rotationalSpeed = ((double)SDL_JoystickGetAxis(controller, 0) / 20000) * -1;
+				rotateXYVector(&engineVector, -0.25 * deltaTime * rotationalSpeed);
+			}
+			else
+			{
+				rotateXYVector(&engineVector, 0.25 * deltaTime);
+			}
 			currentTexture = clockwiseTexture;
 		}
 		if(rotatingAnticlockwise)
 		{
-			rotateXYVector(&engineVector, -0.25 * deltaTime);
+			if (SDL_JoystickGetAxis(controller, 0) < -2500)
+			{
+				double rotationalSpeed = ((double)SDL_JoystickGetAxis(controller, 0) / 20000) * -1;
+				rotateXYVector(&engineVector, -0.25 * deltaTime * rotationalSpeed);
+			}
+			else
+			{
+				rotateXYVector(&engineVector, -0.25 * deltaTime);
+			}
 			currentTexture = anticlockwiseTexture;
 		}
 		
@@ -377,7 +438,10 @@ int main(int argc, char ** argv)
 		
 		if(accelerating)
 		{
+			xyVector temporary = engineVector;
+			multiplyXYVector(&engineVector, SDL_JoystickGetAxis(controller, 5) / 30000);
 			addXYVectorDeltaScaled(&shipA.velocity, &engineVector, deltaTime);
+			engineVector = temporary;
 			frameAccumulator += deltaTime;
 			currentTexture = acceleratingTexture;
 			if((long)frameAccumulator % 4)
@@ -444,5 +508,5 @@ int main(int argc, char ** argv)
 }
 // ========================================================================================================
 // Local Variables:
-// compile-command: "gcc `sdl2-config --libs --cflags` SDL2-Experiment-15.c -lSDL2_image -lm -o 'Spacewar!'"
+// compile-command: "gcc `sdl2-config --libs --cflags` SDL2-Experiment-16.c -lSDL2_image -lm -o 'Spacewar!'"
 // End:

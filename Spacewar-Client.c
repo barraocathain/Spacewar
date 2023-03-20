@@ -1,4 +1,4 @@
-// SDL Experiment 15, Barra Ó Catháin.
+// SDL Experiment 16, Barra Ó Catháin.
 // ===================================
 #include <SDL2/SDL.h>
 #include <SDL2/SDL_image.h>
@@ -138,11 +138,11 @@ int main(int argc, char ** argv)
 	SDL_Texture * idleTexture, * acceleratingTexture, * clockwiseTexture, * anticlockwiseTexture, * currentTexture,
 	    * acceleratingTexture2;
 	
-	idleTexture = IMG_LoadTexture(renderer, "./Experiment-15-Images/Ship-Idle.png");
-	clockwiseTexture = IMG_LoadTexture(renderer, "./Experiment-15-Images/Ship-Clockwise.png");
-	acceleratingTexture = IMG_LoadTexture(renderer, "./Experiment-15-Images/Ship-Accelerating.png");
-	anticlockwiseTexture = IMG_LoadTexture(renderer, "./Experiment-15-Images/Ship-Anticlockwise.png");
-	acceleratingTexture2 = IMG_LoadTexture(renderer, "./Experiment-15-Images/Ship-Accelerating-Frame-2.png");
+	idleTexture = IMG_LoadTexture(renderer, "./Experiment-16-Images/Ship-Idle.png");
+	clockwiseTexture = IMG_LoadTexture(renderer, "./Experiment-16-Images/Ship-Clockwise.png");
+	acceleratingTexture = IMG_LoadTexture(renderer, "./Experiment-16-Images/Ship-Accelerating.png");
+	anticlockwiseTexture = IMG_LoadTexture(renderer, "./Experiment-16-Images/Ship-Anticlockwise.png");
+	acceleratingTexture2 = IMG_LoadTexture(renderer, "./Experiment-16-Images/Ship-Accelerating-Frame-2.png");
 
 	// Enable resizing the window:
 	SDL_SetWindowResizable(window, SDL_TRUE);
@@ -224,5 +224,5 @@ int main(int argc, char ** argv)
 }
 // ========================================================================================================
 // Local Variables:
-// compile-command: "gcc `sdl2-config --libs --cflags` SDL2-Experiment-15-Client.c -lSDL2_image -lm -o 'Spacewar Client!'"
+// compile-command: "gcc `sdl2-config --libs --cflags` SDL2-Experiment-16-Client.c -lSDL2_image -lm -o 'Spacewar Client!'"
 // End:
