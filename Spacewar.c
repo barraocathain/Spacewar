@@ -212,7 +212,7 @@ int main(int argc, char ** argv)
 		}
 
 		// Get the needed input:
-		getPlayerInput(&playerOne, 0);
+		getPlayerInput(&playerOne);
 		takeNetworkInput(&playerTwo, receiveSocket);
 
 		// Do the needed input:
@@ -270,5 +270,5 @@ int main(int argc, char ** argv)
 }
 // ========================================================================================================
 // Local Variables:
-// compile-command: "gcc `sdl2-config --libs --cflags` Spacewar.c -lSDL2_image -lm -o 'Spacewar!'"
+// compile-command: "gcc `sdl2-config --libs --cflags` Spacewar.c spacewarPlayer.c -lSDL2_image -lm -o 'Spacewar!'"
 // End:

@@ -230,5 +230,5 @@ int main(int argc, char ** argv)
 }
 // ========================================================================================================
 // Local Variables:
-// compile-command: "gcc `sdl2-config --libs --cflags` Spacewar-Client.c -lSDL2_image -lm -o 'Spacewar Client!'"
+// compile-command: "gcc `sdl2-config --libs --cflags` Spacewar-Client.c spacewarPlayer.c -lSDL2_image -lm -o 'Spacewar Client!'"
 // End:
