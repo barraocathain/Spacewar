@@ -80,7 +80,10 @@ int main(int argc, char ** argv)
 	
 	// Initialize image loading:
 	IMG_Init(IMG_INIT_PNG);
+
+	// Initialize font support:
 	TTF_Init();
+	
 	SDL_SetHint(SDL_HINT_RENDER_SCALE_QUALITY, "2");
 	SDL_SetHint(SDL_HINT_JOYSTICK_ALLOW_BACKGROUND_EVENTS, "1");
 	
@@ -90,6 +93,8 @@ int main(int argc, char ** argv)
 	// Create an SDL window and rendering context in that window:
 	SDL_Window * window = SDL_CreateWindow("SDL_TEST", SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, 700, 700, 0);
 	SDL_Renderer * renderer = SDL_CreateRenderer(window, -1, rendererFlags);
+
+	// Set some properties for the window:
 	SDL_SetWindowResizable(window, SDL_TRUE);
 	SDL_SetWindowTitle(window, "Spacewar!");
 
@@ -99,10 +104,14 @@ int main(int argc, char ** argv)
 	// Load the title screen:   
 	SDL_Texture * titleTexture = IMG_LoadTexture(renderer, "./Images/Title.png");
 	SDL_Rect titleRect;
-	titleRect.w = 317;
-	titleRect.h = 51;
+	SDL_QueryTexture(titleTexture, NULL, NULL, NULL, &titleRect.h);
+	SDL_QueryTexture(titleTexture, NULL, NULL, &titleRect.w, NULL);
+	
+	SDL_Texture * starfieldTexture = IMG_LoadTexture(renderer, "./Images/Starfield.png");
+	SDL_Rect starfieldRect;
+	SDL_QueryTexture(starfieldTexture, NULL, NULL, NULL, &starfieldRect.h);
+	SDL_QueryTexture(starfieldTexture, NULL, NULL, &starfieldRect.w, NULL);
 
-	//
 	TTF_Font * font = TTF_OpenFont("./Robtronika.ttf", 12);
 	SDL_Color white = {255, 255, 255};
 	
@@ -116,6 +125,7 @@ int main(int argc, char ** argv)
 		SDL_Rect textDestination = {0, 0, text->w, text->h};
 		SDL_Texture * textTexture = SDL_CreateTextureFromSurface(renderer, text);
 
+		int scrollX = 0;
 		// Render the title text:
 		while(!inputSelected)
 		{
@@ -132,6 +142,23 @@ int main(int argc, char ** argv)
 			// Clear the screen, filling it with black:
 			SDL_RenderClear(renderer);
 
+			starfieldRect.x = 0 - scrollX++;
+			starfieldRect.y = 0;
+			while(starfieldRect.x <= (width + 800))
+			{
+				while(starfieldRect.y <= (height + 800))
+				{
+					SDL_RenderCopy(renderer, starfieldTexture,  NULL,  &starfieldRect);
+					starfieldRect.y += 800;
+				}
+				starfieldRect.y = 0;
+				starfieldRect.x += 800;
+			} 
+
+			if(scrollX == 801)
+			{
+				scrollX = 0;
+			}
 			SDL_RenderCopy(renderer, titleTexture,  NULL,  &titleRect);
 			SDL_RenderCopy(renderer, textTexture,  NULL,  &textDestination);
 			SDL_RenderPresent(renderer);
@@ -166,6 +193,7 @@ int main(int argc, char ** argv)
 		bool inputSelected = false;
 
 		// Render the title text:
+		int scrollX = 0;
 		while(!inputSelected)
 		{
 			// Draw the title screen:
@@ -181,6 +209,24 @@ int main(int argc, char ** argv)
 			// Clear the screen, filling it with black:
 			SDL_RenderClear(renderer);
 
+			starfieldRect.x = 0 - scrollX++;
+			starfieldRect.y = 0;
+			while(starfieldRect.x <= (width + 800))
+			{
+				while(starfieldRect.y <= (height + 800))
+				{
+					SDL_RenderCopy(renderer, starfieldTexture,  NULL,  &starfieldRect);
+					starfieldRect.y += 800;
+				}
+				starfieldRect.y = 0;
+				starfieldRect.x += 800;
+			} 
+
+			if(scrollX == 801)
+			{
+				scrollX = 0;
+			}
+			
 			SDL_RenderCopy(renderer, titleTexture,  NULL,  &titleRect);
 			SDL_RenderCopy(renderer, textTexture,  NULL,  &textDestination);
 			SDL_RenderPresent(renderer);
@@ -312,6 +358,19 @@ int main(int argc, char ** argv)
 		// Clear the screen, filling it with black:
 		SDL_RenderClear(renderer);
 
+		starfieldRect.x = -900 - (long)shipA.position.xComponent % 800 - (shipA.velocity.xComponent * 15);
+		starfieldRect.y = -900 - (long)shipA.position.yComponent % 800 - (shipA.velocity.yComponent * 15);
+		while(starfieldRect.x <= (width + 800))
+		{
+			while(starfieldRect.y <= (height + 800))
+			{
+				SDL_RenderCopy(renderer, starfieldTexture,  NULL,  &starfieldRect);
+				starfieldRect.y += 800;
+			}
+			starfieldRect.y = -900 - (long)shipA.position.yComponent % 800  - (shipA.velocity.yComponent * 15);
+			starfieldRect.x += 800;
+		}
+			
 		// Draw the ship:
 		SDL_RenderCopyEx(renderer, currentTexture, NULL, &shipA.rectangle,
 						 angleBetweenVectors(&shipA.engine, &upVector) + 90, NULL, 0);
