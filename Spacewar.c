@@ -3,6 +3,7 @@
 #include <SDL2/SDL.h>
 #include <SDL2/SDL_image.h>
 #include <SDL2/SDL_timer.h>
+#include <SDL2/SDL_ttf.h>
 #include <math.h>
 #include <stdbool.h>
 #include <stdint.h>
@@ -79,7 +80,7 @@ int main(int argc, char ** argv)
 	
 	// Initialize image loading:
 	IMG_Init(IMG_INIT_PNG);
-
+	TTF_Init();
 	SDL_SetHint(SDL_HINT_RENDER_SCALE_QUALITY, "2");
 	SDL_SetHint(SDL_HINT_JOYSTICK_ALLOW_BACKGROUND_EVENTS, "1");
 	
@@ -92,14 +93,63 @@ int main(int argc, char ** argv)
 	SDL_SetWindowResizable(window, SDL_TRUE);
 	SDL_SetWindowTitle(window, "Spacewar!");
 
+	int keyCount = 0; 
+	const uint8_t * keyboardState = SDL_GetKeyboardState(&keyCount);
+
+	// Load the title screen:   
+	SDL_Texture * titleTexture = IMG_LoadTexture(renderer, "./Images/Title.png");
+	SDL_Rect titleRect;
+	titleRect.w = 317;
+	titleRect.h = 51;
+
+	//
+	TTF_Font * font = TTF_OpenFont("./Robtronika.ttf", 12);
+	SDL_Color white = {255, 255, 255};
+	
 	// Check for joysticks:
 	if (SDL_NumJoysticks() < 1 )
 	{
 		playerOne.joystick = NULL;
 		printf( "Warning: No joysticks connected!\n" );
+		bool inputSelected = false;
+		SDL_Surface * text = TTF_RenderText_Blended(font, "Press Enter to play.", white);
+		SDL_Rect textDestination = {0, 0, text->w, text->h};
+		SDL_Texture * textTexture = SDL_CreateTextureFromSurface(renderer, text);
+
+		// Render the title text:
+		while(!inputSelected)
+		{
+			// Draw the title screen:
+			SDL_GetWindowSize(window, &width, &height);
+			titleRect.x = (width/2) - (317/2);
+			titleRect.y = (height/2) - 51;
+			textDestination.x = (width/2) - (textDestination.w / 2);
+			textDestination.y = (height/2) + (textDestination.h) * 2;
+			
+			// Set the colour to black:
+			SDL_SetRenderDrawColor(renderer, 0, 0, 0, 255);
+			
+			// Clear the screen, filling it with black:
+			SDL_RenderClear(renderer);
+
+			SDL_RenderCopy(renderer, titleTexture,  NULL,  &titleRect);
+			SDL_RenderCopy(renderer, textTexture,  NULL,  &textDestination);
+			SDL_RenderPresent(renderer);
+			
+			SDL_PumpEvents();
+			SDL_GetKeyboardState(&keyCount);
+			if(keyboardState[SDL_SCANCODE_RETURN] == 1)
+			{		   
+				inputSelected = true;
+			} 
+		}	
 	}
 	else
 	{
+		SDL_Surface * text = TTF_RenderText_Blended(font, "Press Button 0 on your controller, or press Enter.", white);
+		SDL_Rect textDestination = {0, 0, text->w, text->h};
+		SDL_Texture * textTexture = SDL_CreateTextureFromSurface(renderer, text);
+
 		// Load all joysticks:
 		int joystickListLength = SDL_NumJoysticks();
 		SDL_Joystick ** joysticksList = calloc(joystickListLength, sizeof(SDL_Joystick*));
@@ -111,23 +161,19 @@ int main(int argc, char ** argv)
 
 		// Choose a player joystick:
 		printf("Please press button zero on the controller you wish to use, or enter to play keyboard only.\n");
-
-		// Load the title screen:
-		SDL_Texture * titleTexture = IMG_LoadTexture(renderer, "./Images/Title.png");
-		SDL_Rect titleRect;
-		titleRect.w = 317;
-		titleRect.h = 51;
 		
 		int joystickIndex = 0;
-		int keyCount = 0; 
-		const uint8_t * keyboardState = SDL_GetKeyboardState(&keyCount);
 		bool inputSelected = false;
+
+		// Render the title text:
 		while(!inputSelected)
 		{
 			// Draw the title screen:
 			SDL_GetWindowSize(window, &width, &height);
 			titleRect.x = (width/2) - (317/2);
 			titleRect.y = (height/2) - 51;
+			textDestination.x = (width/2) - (textDestination.w / 2);
+			textDestination.y = (height/2) + (textDestination.h) * 2;
 			
 			// Set the colour to black:
 			SDL_SetRenderDrawColor(renderer, 0, 0, 0, 255);
@@ -136,6 +182,7 @@ int main(int argc, char ** argv)
 			SDL_RenderClear(renderer);
 
 			SDL_RenderCopy(renderer, titleTexture,  NULL,  &titleRect);
+			SDL_RenderCopy(renderer, textTexture,  NULL,  &textDestination);
 			SDL_RenderPresent(renderer);
 			
 			SDL_PumpEvents();
@@ -165,6 +212,7 @@ int main(int argc, char ** argv)
 		playerOne.haptic = SDL_HapticOpenFromJoystick(playerOne.joystick);
 		SDL_HapticRumbleInit(playerOne.haptic);
 	}
+
 
 	// Load in all of our textures:
 	SDL_Texture * idleTexture, * acceleratingTexture, * clockwiseTexture, * anticlockwiseTexture, * currentTexture,
