@@ -168,7 +168,10 @@ int main(int argc, char ** argv)
 			if(keyboardState[SDL_SCANCODE_RETURN] == 1)
 			{		   
 				inputSelected = true;
-			} 
+			}
+
+			// Delay enough so that we run at 30 frames in the menu:
+			SDL_Delay(1000 / 30);
 		}	
 	}
 	else
@@ -247,6 +250,9 @@ int main(int argc, char ** argv)
 			{
 				inputSelected = true;				
 			}
+			
+			// Delay enough so that we run at 30 frames in the menu:
+			SDL_Delay(1000 / 30);
 		}
 		
 		// Load joystick
