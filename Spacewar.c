@@ -79,11 +79,18 @@ int main(int argc, char ** argv)
 	
 	// Initialize image loading:
 	IMG_Init(IMG_INIT_PNG);
+
 	SDL_SetHint(SDL_HINT_RENDER_SCALE_QUALITY, "2");
 	SDL_SetHint(SDL_HINT_JOYSTICK_ALLOW_BACKGROUND_EVENTS, "1");
 	
 	playerController playerOne = createShipPlayerController(&shipA);
 	playerController playerTwo = createShipPlayerController(&shipB);
+
+	// Create an SDL window and rendering context in that window:
+	SDL_Window * window = SDL_CreateWindow("SDL_TEST", SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, 700, 700, 0);
+	SDL_Renderer * renderer = SDL_CreateRenderer(window, -1, rendererFlags);
+	SDL_SetWindowResizable(window, SDL_TRUE);
+	SDL_SetWindowTitle(window, "Spacewar!");
 
 	// Check for joysticks:
 	if (SDL_NumJoysticks() < 1 )
@@ -103,16 +110,49 @@ int main(int argc, char ** argv)
 		}
 
 		// Choose a player joystick:
-		printf("Please press button zero on the controller you wish to use. \n");
+		printf("Please press button zero on the controller you wish to use, or enter to play keyboard only.\n");
 
+		// Load the title screen:
+		SDL_Texture * titleTexture = IMG_LoadTexture(renderer, "./Images/Title.png");
+		SDL_Rect titleRect;
+		titleRect.w = 317;
+		titleRect.h = 51;
+		
 		int joystickIndex = 0;
-		while(SDL_JoystickGetButton(joysticksList[joystickIndex], 0) == 0)
+		int keyCount = 0; 
+		const uint8_t * keyboardState = SDL_GetKeyboardState(&keyCount);
+		bool inputSelected = false;
+		while(!inputSelected)
 		{
+			// Draw the title screen:
+			SDL_GetWindowSize(window, &width, &height);
+			titleRect.x = (width/2) - (317/2);
+			titleRect.y = (height/2) - 51;
+			
+			// Set the colour to black:
+			SDL_SetRenderDrawColor(renderer, 0, 0, 0, 255);
+			
+			// Clear the screen, filling it with black:
+			SDL_RenderClear(renderer);
+
+			SDL_RenderCopy(renderer, titleTexture,  NULL,  &titleRect);
+			SDL_RenderPresent(renderer);
+			
 			SDL_PumpEvents();
+			SDL_GetKeyboardState(&keyCount);
+			if(keyboardState[SDL_SCANCODE_RETURN] == 1)
+			{
+				joysticksList[joystickIndex] = NULL;
+				inputSelected = true;
+			}
 			joystickIndex++;
 			if(joystickIndex >= joystickListLength)
 			{
 				joystickIndex = 0;
+			}
+			if(SDL_JoystickGetButton(joysticksList[joystickIndex], 0) == 1)
+			{
+				inputSelected = true;				
 			}
 		}
 		
@@ -126,11 +166,6 @@ int main(int argc, char ** argv)
 		SDL_HapticRumbleInit(playerOne.haptic);
 	}
 
-		// Create an SDL window and rendering context in that window:
-	SDL_Window * window = SDL_CreateWindow("SDL_TEST", SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, 700, 700, 0);
-	SDL_Renderer * renderer = SDL_CreateRenderer(window, -1, rendererFlags);
-	SDL_SetWindowTitle(window, "Spacewar!");
-	
 	// Load in all of our textures:
 	SDL_Texture * idleTexture, * acceleratingTexture, * clockwiseTexture, * anticlockwiseTexture, * currentTexture,
 	    * acceleratingTexture2;
@@ -141,9 +176,6 @@ int main(int argc, char ** argv)
 	anticlockwiseTexture = IMG_LoadTexture(renderer, "./Images/Ship-Anticlockwise.png");
 	acceleratingTexture2 = IMG_LoadTexture(renderer, "./Images/Ship-Accelerating-Frame-2.png");
 	currentTexture = acceleratingTexture;
-
-	// Enable resizing the window:
-	SDL_SetWindowResizable(window, SDL_TRUE);
 
 	lastFrameTime = SDL_GetPerformanceCounter();
 	thisFrameTime = SDL_GetPerformanceCounter();
