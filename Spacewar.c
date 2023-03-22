@@ -125,62 +125,75 @@ int main(int argc, char ** argv)
 		SDL_Rect textDestination = {0, 0, text->w, text->h};
 		SDL_Texture * textTexture = SDL_CreateTextureFromSurface(renderer, text);
 
+		// Prep the titlescreen struct:
+		SpacewarTitlescreen titlescreen;
+		titlescreen.starfieldTexture = starfieldTexture;
+		titlescreen.starfieldRectangle = &starfieldRect;
+		titlescreen.xScroll = 0;
+		titlescreen.window = window;
+		titlescreen.renderer = renderer;
+		titlescreen.titleRectangle = &titleRect;
+		titlescreen.titleTexture = titleTexture;
+		titlescreen.textTexture = textTexture;
+		titlescreen.textRectangle = &textDestination;
+		
 		int scrollX = 0, titleAlpha = 0, textAlpha = 0;
 		// Render the title text:
 		while(!inputSelected)
 		{
-			// Draw the title screen:
-			SDL_GetWindowSize(window, &width, &height);
-			titleRect.x = (width/2) - (317/2);
-			titleRect.y = (height/2) - 51;
-			textDestination.x = (width/2) - (textDestination.w / 2);
-			textDestination.y = (height/2) + (textDestination.h) * 2;
+			/* // Draw the title screen: */
+			/* SDL_GetWindowSize(window, &width, &height); */
+			/* titleRect.x = (width/2) - (317/2); */
+			/* titleRect.y = (height/2) - 51; */
+			/* textDestination.x = (width/2) - (textDestination.w / 2); */
+			/* textDestination.y = (height/2) + (textDestination.h) * 2; */
 			
-			// Set the colour to black:
-			SDL_SetRenderDrawColor(renderer, 0, 0, 0, 255);
+			/* // Set the colour to black: */
+			/* SDL_SetRenderDrawColor(renderer, 0, 0, 0, 255); */
 			
-			// Clear the screen, filling it with black:
-			SDL_RenderClear(renderer);
+			/* // Clear the screen, filling it with black: */
+			/* SDL_RenderClear(renderer); */
 
-			starfieldRect.x = 0 - scrollX++;
-			starfieldRect.y = 0;
-			while(starfieldRect.x <= (width + 800))
-			{
-				while(starfieldRect.y <= (height + 800))
-				{
-					SDL_RenderCopy(renderer, starfieldTexture,  NULL,  &starfieldRect);
-					starfieldRect.y += 800;
-				}
-				starfieldRect.y = 0;
-				starfieldRect.x += 800;
-			} 
+			/* starfieldRect.x = 0 - scrollX++; */
+			/* starfieldRect.y = 0; */
+			/* while(starfieldRect.x <= (width + 800)) */
+			/* { */
+			/* 	while(starfieldRect.y <= (height + 800)) */
+			/* 	{ */
+			/* 		SDL_RenderCopy(renderer, starfieldTexture,  NULL,  &starfieldRect); */
+			/* 		starfieldRect.y += 800; */
+			/* 	} */
+			/* 	starfieldRect.y = 0; */
+			/* 	starfieldRect.x += 800; */
+			/* }  */
 
-			if(scrollX == 801)
-			{
-				scrollX = 0;
-			}
-			SDL_SetTextureAlphaMod(titleTexture, titleAlpha);
-			SDL_RenderCopy(renderer, titleTexture,  NULL,  &titleRect);
-			if(titleAlpha < 254)
-			{
-				titleAlpha += 10;
-			}
-			if(titleAlpha >= 254)
-			{
-				titleAlpha = 254;
-			}
-			SDL_SetTextureAlphaMod(textTexture, textAlpha);
-			SDL_RenderCopy(renderer, textTexture,  NULL,  &textDestination);
-			if(textAlpha < 254 && titleAlpha == 254)
-			{
-				textAlpha += 20;
-			}
-			if(textAlpha >= 254)
-			{
-				textAlpha = 254;
-			}
+			/* if(scrollX == 801) */
+			/* { */
+			/* 	scrollX = 0; */
+			/* } */
+			/* SDL_SetTextureAlphaMod(titleTexture, titleAlpha); */
+			/* SDL_RenderCopy(renderer, titleTexture,  NULL,  &titleRect); */
+			/* if(titleAlpha < 254) */
+			/* { */
+			/* 	titleAlpha += 10; */
+			/* } */
+			/* if(titleAlpha >= 254) */
+			/* { */
+			/* 	titleAlpha = 254; */
+			/* } */
+			/* SDL_SetTextureAlphaMod(textTexture, textAlpha); */
+			/* SDL_RenderCopy(renderer, textTexture,  NULL,  &textDestination); */
+			/* if(textAlpha < 254 && titleAlpha == 254) */
+			/* { */
+			/* 	textAlpha += 20; */
+			/* } */
+			/* if(textAlpha >= 254) */
+			/* { */
+			/* 	textAlpha = 254; */
+			/* } */
 
-			SDL_RenderPresent(renderer);
+
+			drawTitleScreen(&titlescreen);
 			
 			SDL_PumpEvents();
 			SDL_GetKeyboardState(&keyCount);
@@ -434,5 +447,5 @@ int main(int argc, char ** argv)
 }
 // ========================================================================================================
 // Local Variables:
-// compile-command: "gcc `sdl2-config --libs --cflags` Spacewar.c spacewarPlayer.c -lSDL2_image -lm -o 'Spacewar!'"
+// compile-command: "gcc `sdl2-config --libs --cflags` Spacewar.c spacewarPlayer.c spacewarGraphics.c -lSDL2_image -lSDL2_ttf -lm -o 'Spacewar!'"
 // End:

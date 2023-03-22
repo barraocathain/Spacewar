@@ -2,6 +2,17 @@
 #define SPACEWAR_GRAPHICS_H
 #include <SDL2/SDL.h>
 
+typedef struct SpacewarTitlescreen
+{
+	SDL_Window * window;
+	SDL_Renderer * renderer;
+	uint16_t xScroll, titleAlpha, textAlpha;
+	SDL_Texture * titleTexture, * textTexture, * starfieldTexture;
+	SDL_Rect * titleRectangle, * textRectangle, * starfieldRectangle;
+} SpacewarTitlescreen;
+
+void drawTitleScreen(SpacewarTitlescreen * titlescreen);
+
 static inline void DrawCircle(SDL_Renderer * renderer, int32_t centreX, int32_t centreY, int32_t radius)
 {
 	const int32_t diameter = (radius * 2);
