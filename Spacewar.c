@@ -125,7 +125,7 @@ int main(int argc, char ** argv)
 		SDL_Rect textDestination = {0, 0, text->w, text->h};
 		SDL_Texture * textTexture = SDL_CreateTextureFromSurface(renderer, text);
 
-		int scrollX = 0;
+		int scrollX = 0, titleAlpha = 0, textAlpha = 0;
 		// Render the title text:
 		while(!inputSelected)
 		{
@@ -159,8 +159,27 @@ int main(int argc, char ** argv)
 			{
 				scrollX = 0;
 			}
+			SDL_SetTextureAlphaMod(titleTexture, titleAlpha);
 			SDL_RenderCopy(renderer, titleTexture,  NULL,  &titleRect);
+			if(titleAlpha < 254)
+			{
+				titleAlpha += 10;
+			}
+			if(titleAlpha >= 254)
+			{
+				titleAlpha = 254;
+			}
+			SDL_SetTextureAlphaMod(textTexture, textAlpha);
 			SDL_RenderCopy(renderer, textTexture,  NULL,  &textDestination);
+			if(textAlpha < 254 && titleAlpha == 254)
+			{
+				textAlpha += 20;
+			}
+			if(textAlpha >= 254)
+			{
+				textAlpha = 254;
+			}
+
 			SDL_RenderPresent(renderer);
 			
 			SDL_PumpEvents();
