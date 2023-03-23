@@ -119,7 +119,6 @@ int main(int argc, char ** argv)
 	if (SDL_NumJoysticks() < 1 )
 	{
 		playerOne.joystick = NULL;
-		printf( "Warning: No joysticks connected!\n" );
 		bool inputSelected = false;
 		SDL_Surface * text = TTF_RenderText_Blended(font, "Press Enter to play.", white);
 		SDL_Rect textDestination = {0, 0, text->w, text->h};
@@ -141,60 +140,10 @@ int main(int argc, char ** argv)
 		// Render the title text:
 		while(!inputSelected)
 		{
-			/* // Draw the title screen: */
-			/* SDL_GetWindowSize(window, &width, &height); */
-			/* titleRect.x = (width/2) - (317/2); */
-			/* titleRect.y = (height/2) - 51; */
-			/* textDestination.x = (width/2) - (textDestination.w / 2); */
-			/* textDestination.y = (height/2) + (textDestination.h) * 2; */
-			
-			/* // Set the colour to black: */
-			/* SDL_SetRenderDrawColor(renderer, 0, 0, 0, 255); */
-			
-			/* // Clear the screen, filling it with black: */
-			/* SDL_RenderClear(renderer); */
-
-			/* starfieldRect.x = 0 - scrollX++; */
-			/* starfieldRect.y = 0; */
-			/* while(starfieldRect.x <= (width + 800)) */
-			/* { */
-			/* 	while(starfieldRect.y <= (height + 800)) */
-			/* 	{ */
-			/* 		SDL_RenderCopy(renderer, starfieldTexture,  NULL,  &starfieldRect); */
-			/* 		starfieldRect.y += 800; */
-			/* 	} */
-			/* 	starfieldRect.y = 0; */
-			/* 	starfieldRect.x += 800; */
-			/* }  */
-
-			/* if(scrollX == 801) */
-			/* { */
-			/* 	scrollX = 0; */
-			/* } */
-			/* SDL_SetTextureAlphaMod(titleTexture, titleAlpha); */
-			/* SDL_RenderCopy(renderer, titleTexture,  NULL,  &titleRect); */
-			/* if(titleAlpha < 254) */
-			/* { */
-			/* 	titleAlpha += 10; */
-			/* } */
-			/* if(titleAlpha >= 254) */
-			/* { */
-			/* 	titleAlpha = 254; */
-			/* } */
-			/* SDL_SetTextureAlphaMod(textTexture, textAlpha); */
-			/* SDL_RenderCopy(renderer, textTexture,  NULL,  &textDestination); */
-			/* if(textAlpha < 254 && titleAlpha == 254) */
-			/* { */
-			/* 	textAlpha += 20; */
-			/* } */
-			/* if(textAlpha >= 254) */
-			/* { */
-			/* 	textAlpha = 254; */
-			/* } */
-
-
+			// Draw the title screen according to the titlescreen struct:
 			drawTitleScreen(&titlescreen);
-			
+
+			// Wait until they press enter:
 			SDL_PumpEvents();
 			SDL_GetKeyboardState(&keyCount);
 			if(keyboardState[SDL_SCANCODE_RETURN] == 1)
@@ -208,10 +157,22 @@ int main(int argc, char ** argv)
 	}
 	else
 	{
-		SDL_Surface * text = TTF_RenderText_Blended(font, "Press Button 0 on your controller, or press Enter.", white);
+		SDL_Surface * text = TTF_RenderText_Blended(font, "Press Button 0 on your controller, or press enter.", white);
 		SDL_Rect textDestination = {0, 0, text->w, text->h};
 		SDL_Texture * textTexture = SDL_CreateTextureFromSurface(renderer, text);
 
+		// Prep the titlescreen struct:
+		SpacewarTitlescreen titlescreen;
+		titlescreen.starfieldTexture = starfieldTexture;
+		titlescreen.starfieldRectangle = &starfieldRect;
+		titlescreen.xScroll = 0;
+		titlescreen.window = window;
+		titlescreen.renderer = renderer;
+		titlescreen.titleRectangle = &titleRect;
+		titlescreen.titleTexture = titleTexture;
+		titlescreen.textTexture = textTexture;
+		titlescreen.textRectangle = &textDestination;
+		
 		// Load all joysticks:
 		int joystickListLength = SDL_NumJoysticks();
 		SDL_Joystick ** joysticksList = calloc(joystickListLength, sizeof(SDL_Joystick*));
@@ -228,44 +189,11 @@ int main(int argc, char ** argv)
 		bool inputSelected = false;
 
 		// Render the title text:
-		int scrollX = 0;
 		while(!inputSelected)
 		{
-			// Draw the title screen:
-			SDL_GetWindowSize(window, &width, &height);
-			titleRect.x = (width/2) - (317/2);
-			titleRect.y = (height/2) - 51;
-			textDestination.x = (width/2) - (textDestination.w / 2);
-			textDestination.y = (height/2) + (textDestination.h) * 2;
-			
-			// Set the colour to black:
-			SDL_SetRenderDrawColor(renderer, 0, 0, 0, 255);
-			
-			// Clear the screen, filling it with black:
-			SDL_RenderClear(renderer);
+			// Draw the title screen according to the titlescreen struct:
+			drawTitleScreen(&titlescreen);
 
-			starfieldRect.x = 0 - scrollX++;
-			starfieldRect.y = 0;
-			while(starfieldRect.x <= (width + 800))
-			{
-				while(starfieldRect.y <= (height + 800))
-				{
-					SDL_RenderCopy(renderer, starfieldTexture,  NULL,  &starfieldRect);
-					starfieldRect.y += 800;
-				}
-				starfieldRect.y = 0;
-				starfieldRect.x += 800;
-			} 
-
-			if(scrollX == 801)
-			{
-				scrollX = 0;
-			}
-			
-			SDL_RenderCopy(renderer, titleTexture,  NULL,  &titleRect);
-			SDL_RenderCopy(renderer, textTexture,  NULL,  &textDestination);
-			SDL_RenderPresent(renderer);
-			
 			SDL_PumpEvents();
 			SDL_GetKeyboardState(&keyCount);
 			if(keyboardState[SDL_SCANCODE_RETURN] == 1)
