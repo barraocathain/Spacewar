@@ -227,15 +227,22 @@ int main(int argc, char ** argv)
 
 
 	// Load in all of our textures:
-	SDL_Texture * idleTexture, * acceleratingTexture, * clockwiseTexture, * anticlockwiseTexture, * currentTexture,
-	    * acceleratingTexture2;
-	
+	SDL_Texture * blackHoleTexture, * idleTexture, * acceleratingTexture, * clockwiseTexture, * anticlockwiseTexture,
+		* currentTexture, * acceleratingTexture2;
+
 	idleTexture = IMG_LoadTexture(renderer, "./Images/Ship-Idle.png");
+	blackHoleTexture = IMG_LoadTexture(renderer, "./Images/Black-Hole.png");
 	clockwiseTexture = IMG_LoadTexture(renderer, "./Images/Ship-Clockwise.png");
 	acceleratingTexture = IMG_LoadTexture(renderer, "./Images/Ship-Accelerating.png");
 	anticlockwiseTexture = IMG_LoadTexture(renderer, "./Images/Ship-Anticlockwise.png");
-	acceleratingTexture2 = IMG_LoadTexture(renderer, "./Images/Ship-Accelerating-Frame-2.png");
+	acceleratingTexture2 = IMG_LoadTexture(renderer, "./Images/Ship-Accelerating-Frame-2.png"); 
 	currentTexture = acceleratingTexture;
+
+	SDL_Rect blackHoleRectangle;
+	blackHoleRectangle.x = 0;
+	blackHoleRectangle.y = 0;
+	SDL_QueryTexture(blackHoleTexture, NULL, NULL, NULL, &blackHoleRectangle.h);
+	SDL_QueryTexture(blackHoleTexture, NULL, NULL, &blackHoleRectangle.w, NULL);
 
 	lastFrameTime = SDL_GetPerformanceCounter();
 	thisFrameTime = SDL_GetPerformanceCounter();
@@ -343,13 +350,16 @@ int main(int argc, char ** argv)
 		SDL_RenderCopyEx(renderer, currentTexture, NULL, &shipB.rectangle,
 						 angleBetweenVectors(&shipB.engine, &upVector) + 90, NULL, 0);
 
+		// Draw the black hole:
+		blackHoleRectangle.x = ((long)(starPositionX - shipA.position.xComponent - (blackHoleRectangle.w / 2)) + width/2)
+			- (shipA.velocity.xComponent * 15);
+		blackHoleRectangle.y = ((long)(starPositionY - shipA.position.yComponent  - (blackHoleRectangle.h / 2)) + height/2)
+			- (shipA.velocity.yComponent * 15);
+		SDL_RenderCopy(renderer, blackHoleTexture, NULL, &blackHoleRectangle);
+
 		// Set the colour to yellow:
 		SDL_SetRenderDrawColor(renderer, 255, 255, 0, 255);
-
-		// Draw a circle as the star:
-		DrawCircle(renderer, (long)(starPositionX - shipA.position.xComponent) + width/2  - (shipA.velocity.xComponent * 15),
-				   (long)(starPositionY - shipA.position.yComponent) + height/2  - (shipA.velocity.yComponent * 15), 50);
-
+		
 		// Draw a line representing the velocity:
 		SDL_RenderDrawLine(renderer, width/2 - (shipA.velocity.xComponent * 15),
 						   height/2  - (shipA.velocity.yComponent * 15),
