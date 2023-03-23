@@ -44,6 +44,8 @@ static inline void calculateGravity(xyVector * starPosition, ship * shipUnderGra
 		{
 			shipUnderGravity->position.xComponent = random() % 4000;
 			shipUnderGravity->position.yComponent = random() % 4000;
+			shipUnderGravity->velocity.xComponent = 0;
+			shipUnderGravity->velocity.yComponent = 0;
 		}
 	}
 	else
