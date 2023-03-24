@@ -3,7 +3,45 @@
 #include <SDL2/SDL_timer.h>
 #include <SDL2/SDL_ttf.h>
 #include <stdint.h>
+#include <stdlib.h>
 #include "spacewarGraphics.h"
+
+SpacewarTitlescreen prepareTitleScreen(SDL_Window * window, SDL_Renderer * renderer,
+									   char * starfieldTexturePath, char * logoTexturePath,
+									   TTF_Font * font, char * text)
+{
+	SpacewarTitlescreen newTitleScreen;
+
+	// Basic state:
+	newTitleScreen.xScroll = 0;
+	newTitleScreen.textAlpha = 0;
+	newTitleScreen.titleAlpha = 0;
+
+	// Requirements for drawing:
+	newTitleScreen.window = window;
+	newTitleScreen.renderer = renderer;
+
+	// Textures:
+	newTitleScreen.titleTexture = IMG_LoadTexture(renderer, logoTexturePath);
+	newTitleScreen.starfieldTexture = IMG_LoadTexture(renderer, starfieldTexturePath);
+
+	// Text message:
+	SDL_Color white = {255, 255, 255};
+	SDL_Surface * fontSurface = TTF_RenderText_Blended(font, text, white);
+	newTitleScreen.textTexture = SDL_CreateTextureFromSurface(renderer, fontSurface);
+	SDL_FreeSurface(fontSurface);
+
+	// Rects:
+	newTitleScreen.titleRectangle = calloc(1, sizeof(SDL_Rect));
+	newTitleScreen.textRectangle = calloc(1, sizeof(SDL_Rect));
+	newTitleScreen.starfieldRectangle = calloc(1, sizeof(SDL_Rect));
+	SDL_QueryTexture(newTitleScreen.textTexture, NULL, NULL, NULL, &newTitleScreen.textRectangle->h);
+	SDL_QueryTexture(newTitleScreen.textTexture, NULL, NULL, &newTitleScreen.textRectangle->w, NULL);
+	SDL_QueryTexture(newTitleScreen.titleTexture, NULL, NULL, NULL, &newTitleScreen.titleRectangle->h);
+	SDL_QueryTexture(newTitleScreen.titleTexture, NULL, NULL, &newTitleScreen.titleRectangle->w, NULL);
+	SDL_QueryTexture(newTitleScreen.starfieldTexture, NULL, NULL, NULL, &newTitleScreen.starfieldRectangle->h);
+	SDL_QueryTexture(newTitleScreen.starfieldTexture, NULL, NULL, &newTitleScreen.starfieldRectangle->w, NULL);
+}
 
 void drawTitleScreen(SpacewarTitlescreen * titlescreen)
 {
@@ -77,3 +115,5 @@ void drawTitleScreen(SpacewarTitlescreen * titlescreen)
 	// Display to the renderer:
 	SDL_RenderPresent(titlescreen->renderer);
 }
+
+

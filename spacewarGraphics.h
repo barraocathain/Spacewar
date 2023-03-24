@@ -11,6 +11,10 @@ typedef struct SpacewarTitlescreen
 	SDL_Rect * titleRectangle, * textRectangle, * starfieldRectangle;
 } SpacewarTitlescreen;
 
+SpacewarTitlescreen prepareTitleScreen(SDL_Window * window, SDL_Renderer * renderer,
+									   char * starfieldTexturePath, char * logoTexturePath,
+									   TTF_Font * font, char * text);
+
 void drawTitleScreen(SpacewarTitlescreen * titlescreen);
 
 static inline void DrawCircle(SDL_Renderer * renderer, int32_t centreX, int32_t centreY, int32_t radius)
