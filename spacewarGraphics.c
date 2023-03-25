@@ -35,18 +35,23 @@ SpacewarTitlescreen prepareTitleScreen(SDL_Window * window, SDL_Renderer * rende
 	newTitleScreen.titleRectangle = calloc(1, sizeof(SDL_Rect));
 	newTitleScreen.textRectangle = calloc(1, sizeof(SDL_Rect));
 	newTitleScreen.starfieldRectangle = calloc(1, sizeof(SDL_Rect));
+
+	// Set the rects to the size of the textures:
 	SDL_QueryTexture(newTitleScreen.textTexture, NULL, NULL, NULL, &newTitleScreen.textRectangle->h);
 	SDL_QueryTexture(newTitleScreen.textTexture, NULL, NULL, &newTitleScreen.textRectangle->w, NULL);
 	SDL_QueryTexture(newTitleScreen.titleTexture, NULL, NULL, NULL, &newTitleScreen.titleRectangle->h);
 	SDL_QueryTexture(newTitleScreen.titleTexture, NULL, NULL, &newTitleScreen.titleRectangle->w, NULL);
 	SDL_QueryTexture(newTitleScreen.starfieldTexture, NULL, NULL, NULL, &newTitleScreen.starfieldRectangle->h);
 	SDL_QueryTexture(newTitleScreen.starfieldTexture, NULL, NULL, &newTitleScreen.starfieldRectangle->w, NULL);
+
+	return newTitleScreen;
 }
 
 void drawTitleScreen(SpacewarTitlescreen * titlescreen)
 {
 	// Get the current size of the window:
 	int width = 0, height = 0;
+	printf("%p\n", titlescreen->window);
 	SDL_GetWindowSize(titlescreen->window, &width, &height);
 
 	// Position the elements on-screen:

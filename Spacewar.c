@@ -120,23 +120,11 @@ int main(int argc, char ** argv)
 	{
 		playerOne.joystick = NULL;
 		bool inputSelected = false;
-		SDL_Surface * text = TTF_RenderText_Blended(font, "Press Enter to play.", white);
-		SDL_Rect textDestination = {0, 0, text->w, text->h};
-		SDL_Texture * textTexture = SDL_CreateTextureFromSurface(renderer, text);
-
-		// Prep the titlescreen struct:
-		SpacewarTitlescreen titlescreen;
-		titlescreen.starfieldTexture = starfieldTexture;
-		titlescreen.starfieldRectangle = &starfieldRect;
-		titlescreen.xScroll = 0;
-		titlescreen.window = window;
-		titlescreen.renderer = renderer;
-		titlescreen.titleRectangle = &titleRect;
-		titlescreen.titleTexture = titleTexture;
-		titlescreen.textTexture = textTexture;
-		titlescreen.textRectangle = &textDestination;
 		
-		int scrollX = 0, titleAlpha = 0, textAlpha = 0;
+		// Prep the titlescreen struct:
+		SpacewarTitlescreen titlescreen = prepareTitleScreen(window, renderer, "./Images/Starfield.png",
+															 "./Images/Title.png", font, "Press Enter to play.");
+
 		// Render the title text:
 		while(!inputSelected)
 		{
@@ -157,21 +145,10 @@ int main(int argc, char ** argv)
 	}
 	else
 	{
-		SDL_Surface * text = TTF_RenderText_Blended(font, "Press Button 0 on your controller, or press enter.", white);
-		SDL_Rect textDestination = {0, 0, text->w, text->h};
-		SDL_Texture * textTexture = SDL_CreateTextureFromSurface(renderer, text);
-
 		// Prep the titlescreen struct:
-		SpacewarTitlescreen titlescreen;
-		titlescreen.starfieldTexture = starfieldTexture;
-		titlescreen.starfieldRectangle = &starfieldRect;
-		titlescreen.xScroll = 0;
-		titlescreen.window = window;
-		titlescreen.renderer = renderer;
-		titlescreen.titleRectangle = &titleRect;
-		titlescreen.titleTexture = titleTexture;
-		titlescreen.textTexture = textTexture;
-		titlescreen.textRectangle = &textDestination;
+		SpacewarTitlescreen titlescreen = prepareTitleScreen(window, renderer, "./Images/Starfield.png",
+															 "./Images/Title.png", font,
+															 "Press Enter or Button 0 on your joystick to play.");
 		
 		// Load all joysticks:
 		int joystickListLength = SDL_NumJoysticks();
