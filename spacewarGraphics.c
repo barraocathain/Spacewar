@@ -51,7 +51,6 @@ void drawTitleScreen(SpacewarTitlescreen * titlescreen)
 {
 	// Get the current size of the window:
 	int width = 0, height = 0;
-	printf("%p\n", titlescreen->window);
 	SDL_GetWindowSize(titlescreen->window, &width, &height);
 
 	// Position the elements on-screen:

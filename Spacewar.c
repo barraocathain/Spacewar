@@ -101,12 +101,6 @@ int main(int argc, char ** argv)
 	int keyCount = 0; 
 	const uint8_t * keyboardState = SDL_GetKeyboardState(&keyCount);
 
-	// Load the title screen:   
-	SDL_Texture * titleTexture = IMG_LoadTexture(renderer, "./Images/Title.png");
-	SDL_Rect titleRect;
-	SDL_QueryTexture(titleTexture, NULL, NULL, NULL, &titleRect.h);
-	SDL_QueryTexture(titleTexture, NULL, NULL, &titleRect.w, NULL);
-	
 	SDL_Texture * starfieldTexture = IMG_LoadTexture(renderer, "./Images/Starfield.png");
 	SDL_Rect starfieldRect;
 	SDL_QueryTexture(starfieldTexture, NULL, NULL, NULL, &starfieldRect.h);
@@ -205,14 +199,15 @@ int main(int argc, char ** argv)
 
 	// Load in all of our textures:
 	SDL_Texture * blackHoleTexture, * idleTexture, * acceleratingTexture, * clockwiseTexture, * anticlockwiseTexture,
-		* currentTexture, * acceleratingTexture2;
+		* currentTexture, * acceleratingTexture2, *blackHolePointerTexture;
 
 	idleTexture = IMG_LoadTexture(renderer, "./Images/Ship-Idle.png");
 	blackHoleTexture = IMG_LoadTexture(renderer, "./Images/Black-Hole.png");
 	clockwiseTexture = IMG_LoadTexture(renderer, "./Images/Ship-Clockwise.png");
 	acceleratingTexture = IMG_LoadTexture(renderer, "./Images/Ship-Accelerating.png");
 	anticlockwiseTexture = IMG_LoadTexture(renderer, "./Images/Ship-Anticlockwise.png");
-	acceleratingTexture2 = IMG_LoadTexture(renderer, "./Images/Ship-Accelerating-Frame-2.png"); 
+	blackHolePointerTexture = IMG_LoadTexture(renderer, "./Images/Black-Hole-Pointer.png");
+	acceleratingTexture2 = IMG_LoadTexture(renderer, "./Images/Ship-Accelerating-Frame-2.png");
 	currentTexture = acceleratingTexture;
 
 	SDL_Rect blackHoleRectangle;
@@ -221,6 +216,11 @@ int main(int argc, char ** argv)
 	SDL_QueryTexture(blackHoleTexture, NULL, NULL, NULL, &blackHoleRectangle.h);
 	SDL_QueryTexture(blackHoleTexture, NULL, NULL, &blackHoleRectangle.w, NULL);
 
+	SDL_Rect blackHolePointerRectangle;
+	blackHolePointerRectangle.x = 0;
+	blackHolePointerRectangle.y = 0;
+	blackHolePointerRectangle.w = 128;
+	blackHolePointerRectangle.h = 128;
 	lastFrameTime = SDL_GetPerformanceCounter();
 	thisFrameTime = SDL_GetPerformanceCounter();
 	
@@ -347,14 +347,11 @@ int main(int argc, char ** argv)
 		SDL_SetRenderDrawColor(renderer, 0, 0, 255, 255);
 
 		// Draw a line representing the direction of the star:
-		normalizeXYVector(&shipA.gravity);
-		multiplyXYVector(&shipA.gravity, 100);
-		SDL_RenderDrawLine(renderer,
-						   width/2  - (shipA.velocity.xComponent * 15),
-						   height/2  - (shipA.velocity.yComponent * 15),
-						   (width/2  - (shipA.velocity.xComponent * 15)) + shipA.gravity.xComponent,
-						   ((height/2) - (shipA.velocity.yComponent * 15)) + shipA.gravity.yComponent);
-
+		blackHolePointerRectangle.x = width/2  - (shipA.velocity.xComponent * 15) - (blackHolePointerRectangle.w / 2);
+		blackHolePointerRectangle.y = height/2  - (shipA.velocity.yComponent * 15) -  (blackHolePointerRectangle.h / 2);
+		SDL_RenderCopyEx(renderer, blackHolePointerTexture, NULL, &blackHolePointerRectangle,
+						 angleBetweenVectors(&shipA.gravity, &upVector) + 90, NULL, 0);
+		
 		// Present the rendered graphics:
 		SDL_RenderPresent(renderer);
 	}
