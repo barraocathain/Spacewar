@@ -3,6 +3,7 @@
 #include <SDL2/SDL.h>
 #include <SDL2/SDL_image.h>
 #include <SDL2/SDL_timer.h>
+#include <SDL2/SDL_ttf.h>
 #include <math.h>
 #include <stdbool.h>
 #include <stdint.h>
@@ -37,7 +38,7 @@ int main(int argc, char ** argv)
 	// Make the socket timeout:
 	struct timeval read_timeout;
 	read_timeout.tv_sec = 0;
-	read_timeout.tv_usec = 16;
+	read_timeout.tv_usec = 8;
 	setsockopt(receiveSocket, SOL_SOCKET, SO_RCVTIMEO, &read_timeout, sizeof(read_timeout));
 	
 	// Create and fill the information needed to bind to the socket:
@@ -92,13 +93,27 @@ int main(int argc, char ** argv)
 	
 	// Load in all of our textures:
 	SDL_Texture * idleTexture, * acceleratingTexture, * clockwiseTexture, * anticlockwiseTexture, * currentTexture,
-	    * acceleratingTexture2;
+	    * acceleratingTexture2, * blackHoleTexture;
 	
 	idleTexture = IMG_LoadTexture(renderer, "./Images/Ship-Idle.png");
 	clockwiseTexture = IMG_LoadTexture(renderer, "./Images/Ship-Clockwise.png");
 	acceleratingTexture = IMG_LoadTexture(renderer, "./Images/Ship-Accelerating.png");
 	anticlockwiseTexture = IMG_LoadTexture(renderer, "./Images/Ship-Anticlockwise.png");
 	acceleratingTexture2 = IMG_LoadTexture(renderer, "./Images/Ship-Accelerating-Frame-2.png");
+
+	// Load the starfield texture:
+	SDL_Texture * starfieldTexture = IMG_LoadTexture(renderer, "./Images/Starfield.png");
+	SDL_Rect starfieldRect;
+	SDL_QueryTexture(starfieldTexture, NULL, NULL, NULL, &starfieldRect.h);
+	SDL_QueryTexture(starfieldTexture, NULL, NULL, &starfieldRect.w, NULL);
+
+	blackHoleTexture = IMG_LoadTexture(renderer, "./Images/Black-Hole.png");
+	SDL_Rect blackHoleRectangle;
+	blackHoleRectangle.x = 0;
+	blackHoleRectangle.y = 0;
+	SDL_QueryTexture(blackHoleTexture, NULL, NULL, NULL, &blackHoleRectangle.h);
+	SDL_QueryTexture(blackHoleTexture, NULL, NULL, &blackHoleRectangle.w, NULL);
+
 
 	// Enable resizing the window:
 	SDL_SetWindowResizable(window, SDL_TRUE);
@@ -208,18 +223,32 @@ int main(int argc, char ** argv)
 		// Clear the screen, filling it with black:
 		SDL_RenderClear(renderer);
 
+		// Draw the starfield:
+		starfieldRect.x = -900 - (long)shipB.position.xComponent % 800 - (shipB.velocity.xComponent * 15);
+		starfieldRect.y = -900 - (long)shipB.position.yComponent % 800 - (shipB.velocity.yComponent * 15);
+		while(starfieldRect.x <= (width + 800))
+		{
+			while(starfieldRect.y <= (height + 800))
+			{
+				SDL_RenderCopy(renderer, starfieldTexture,  NULL,  &starfieldRect);
+				starfieldRect.y += 800;
+			}
+			starfieldRect.y = -900 - (long)shipB.position.yComponent % 800  - (shipB.velocity.yComponent * 15);
+			starfieldRect.x += 800;
+		}
+		
 		// Draw the ship:
 		SDL_RenderCopyEx(renderer, currentTexture, NULL, &shipA.rectangle,
 						 angleBetweenVectors(&shipA.engine, &upVector) + 90, NULL, 0);
 		SDL_RenderCopyEx(renderer, currentTexture, NULL, &shipB.rectangle,
 						 angleBetweenVectors(&shipB.engine, &upVector) + 90, NULL, 0);
 		
-		// Set the colour to yellow:
-		SDL_SetRenderDrawColor(renderer, 255, 255, 0, 255);
-
-		// Draw a circle as the star:
-		DrawCircle(renderer, (long)(starPositionX - shipB.position.xComponent) + width/2  - (shipB.velocity.xComponent * 15),
-				   (long)(starPositionY - shipB.position.yComponent) + height/2  - (shipB.velocity.yComponent * 15), 50);
+		// Calculate the position of the black hole on screen and render it:
+		blackHoleRectangle.x = ((long)(starPositionX - shipB.position.xComponent - (blackHoleRectangle.w / 2)) + width/2)
+			- (shipB.velocity.xComponent * 15);
+		blackHoleRectangle.y = ((long)(starPositionY - shipB.position.yComponent  - (blackHoleRectangle.h / 2)) + height/2)
+			- (shipB.velocity.yComponent * 15);
+		SDL_RenderCopy(renderer, blackHoleTexture, NULL, &blackHoleRectangle);
 
 		// Present the rendered graphics:
 		SDL_RenderPresent(renderer);
@@ -230,5 +259,5 @@ int main(int argc, char ** argv)
 }
 // ========================================================================================================
 // Local Variables:
-// compile-command: "gcc `sdl2-config --libs --cflags` Spacewar-Client.c spacewarPlayer.c -lSDL2_image -lm -o 'Spacewar Client!'"
+// compile-command: "gcc `sdl2-config --libs --cflags` Spacewar-Client.c spacewarPlayer.c -lSDL2_image -lSDL2_ttf -lm -o 'Spacewar Client!'"
 // End:
