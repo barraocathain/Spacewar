@@ -86,8 +86,11 @@ int main(int argc, char ** argv)
 	IMG_Init(IMG_INIT_PNG);
 	SDL_SetHint(SDL_HINT_RENDER_SCALE_QUALITY, "2");
 
+	// Initialize font support:
+	TTF_Init();
+	
 	// Create an SDL window and rendering context in that window:
-	SDL_Window * window = SDL_CreateWindow("SDL_TEST", SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, 700, 700, 0);
+	SDL_Window * window = SDL_CreateWindow("SDL_TEST", SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, 800, 450, 0);
 	SDL_Renderer * renderer = SDL_CreateRenderer(window, -1, rendererFlags);
 	SDL_SetWindowTitle(window, "Spacewar!");
 	
@@ -121,6 +124,68 @@ int main(int argc, char ** argv)
 	playerController playerOne;
 	playerOne.number = 1;
 	bool shipAUpdated, shipBUpdated;
+
+	TTF_Font * font = TTF_OpenFont("./Robtronika.ttf", 12);
+	SDL_Color white = {255, 255, 255};
+	int keyCount = 0; 
+	const uint8_t * keyboardState = SDL_GetKeyboardState(&keyCount);
+
+	// Prep the titlescreen struct:
+	SpacewarTitlescreen titlescreen = prepareTitleScreen(window, renderer, "./Images/Starfield.png",
+														 "./Images/Title.png", font,
+														 "Press Enter or Button 0 on your joystick to connect!");
+		
+	// Load all joysticks:
+	int joystickListLength = SDL_NumJoysticks();
+	SDL_Joystick ** joysticksList = calloc(joystickListLength, sizeof(SDL_Joystick*));
+		
+	for(int index = 0; index < SDL_NumJoysticks(); index++)
+	{
+		joysticksList[index] = SDL_JoystickOpen(index);
+	}
+
+	// Choose a player joystick:
+	printf("Please press button zero on the controller you wish to use, or enter to play keyboard only.\n");
+		
+	int joystickIndex = 0;
+	bool inputSelected = false;
+
+	// Render the title text:
+	while(!inputSelected)
+	{
+		// Draw the title screen according to the titlescreen struct:
+		drawTitleScreen(&titlescreen);
+
+		SDL_PumpEvents();
+		SDL_GetKeyboardState(&keyCount);
+		if(keyboardState[SDL_SCANCODE_RETURN] == 1)
+		{
+			joysticksList[joystickIndex] = NULL;
+			inputSelected = true;
+		}
+		joystickIndex++;
+		if(joystickIndex >= joystickListLength)
+		{
+			joystickIndex = 0;
+		}
+		if(SDL_JoystickGetButton(joysticksList[joystickIndex], 0) == 1)
+		{
+			inputSelected = true;				
+		}
+			
+		// Delay enough so that we run at 30 frames in the menu:
+		SDL_Delay(1000 / 30);
+	}
+		
+	// Load joystick
+	playerOne.joystick = joysticksList[joystickIndex];
+	if (playerOne.joystick == NULL )
+	{
+		printf( "Warning: Unable to open game controller! SDL Error: %s\n", SDL_GetError() );
+	}
+	playerOne.haptic = SDL_HapticOpenFromJoystick(playerOne.joystick);
+	SDL_HapticRumbleInit(playerOne.haptic);
+
 	while (!quit)
 	{
 		while(!(shipAUpdated && shipBUpdated))
@@ -259,5 +324,5 @@ int main(int argc, char ** argv)
 }
 // ========================================================================================================
 // Local Variables:
-// compile-command: "gcc `sdl2-config --libs --cflags` Spacewar-Client.c spacewarPlayer.c -lSDL2_image -lSDL2_ttf -lm -o 'Spacewar Client!'"
+// compile-command: "gcc `sdl2-config --libs --cflags` Spacewar-Client.c spacewarPlayer.c spacewarGraphics.c -lSDL2_image -lSDL2_ttf -lm -o 'Spacewar Client!'"
 // End:
