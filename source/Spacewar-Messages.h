@@ -3,12 +3,9 @@
 // | Copyright (C) 2023, Barra Ó Catháin   |
 // | See end of file for copyright notice. |
 // =========================================
-#ifndef SPACEWAR_MESSAGES
-#define SPACEWAR_MESSAGES
-
+#ifndef SPACEWAR_MESSAGES_H
+#define SPACEWAR_MESSAGES_H
 #include <stdint.h>
-
-const char * messageStrings[] = {"HELLO", "GOODBYE", "PING", "PONG", "SECRET"};
 
 typedef struct SpacewarMessage
 {

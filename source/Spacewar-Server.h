@@ -10,6 +10,10 @@
 #include <sys/socket.h>
 #include <netinet/in.h>
 
+#include "Spacewar-Physics.h"
+
+typedef struct SpacewarState SpacewarState;
+
 typedef struct SpacewarConnection
 {
 	bool active;
@@ -19,10 +23,18 @@ typedef struct SpacewarConnection
 	struct sockaddr_in clientAddress;
 } SpacewarConnection;
 
+
 typedef struct SpacewarServerConfiguration
 {
 	uint16_t port;
 } SpacewarServerConfiguration;
+
+
+typedef struct SpacewarServerSharedState
+{
+	SpacewarState * state;
+	SpacewarConnection * connections;
+} SpacewarServerSharedState;
 
 // Creates a spacewar server, intended to be ran by the standalone server or forked by the game client:
 void * runSpacewarServer(void * configuration);
@@ -43,4 +55,4 @@ void * runSpacewarServer(void * configuration);
 // GNU Affero General Public License for more details.
 
 // You should have received a copy of the GNU Affero General Public License
-// along with this program.  If not, see <https://www.gnu.org/licenses/>.
+// along with this program. If not, see <https://www.gnu.org/licenses/>.

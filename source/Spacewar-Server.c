@@ -14,8 +14,20 @@
 #include <arpa/inet.h>
 #include <sys/socket.h>
 #include <netinet/in.h>
-#include "Spacewar-Physics.h"
 #include "Spacewar-Messages.h"
+#include "Spacewar-Physics.h"
+
+SpacewarConnection * getConnectionBySocket(SpacewarConnection * connections, size_t connectionCount, int socket)
+{
+	for (size_t connectionIndex = 0; connectionIndex < connectionCount; connectionIndex++)
+	{
+		if (connections[connectionIndex].clientSocket == socket)
+		{
+			return &connections[connectionIndex];
+		}
+	}
+	return NULL;
+}
 
 void * runServerPhysics(void * parameters)
 {
@@ -23,42 +35,80 @@ void * runServerPhysics(void * parameters)
 
 	while (true)
 	{
-//		doPhysicsTick(state);
+		//doPhysicsTick(state);
+		//sendCurrentState();		
 		usleep(15625);
 	}
+
+	return NULL;
+}
+
+void * runUDPSocket(void * parameters)
+{
+	SpacewarServerSharedState * sharedState = (SpacewarServerSharedState *)parameters;
+	int udpSocket, bytesRead;
+	socklen_t socketAddressLength;
+	struct sockaddr_in clientAddress, serverAddress;
+	if ((udpSocket = socket(AF_INET, SOCK_DGRAM, 0)) < 0)
+	{
+		exit(EXIT_FAILURE);
+	}
+
+	memset(&serverAddress, 0, sizeof(serverAddress));       
+    serverAddress.sin_family = AF_INET;
+    serverAddress.sin_port = htons(5200);
+    serverAddress.sin_addr.s_addr = INADDR_ANY;
+
+	SpacewarClientInput input;
+	bind(udpSocket, (struct sockaddr *)&serverAddress, sizeof(struct sockaddr_in));
+
+	while (true)
+	{
+		bytesRead = recvfrom(udpSocket, &input, sizeof(SpacewarClientInput), 0,
+							 (struct sockaddr *)&clientAddress, &socketAddressLength);
+		if (bytesRead == sizeof(SpacewarClientInput))
+		{
+			if (input.playerNumber < 32)
+			{
+				if (input.secret == sharedState->connections[input.playerNumber].playerSecret)
+				{
+					memcpy(&sharedState->connections[input.playerNumber].clientAddress,
+						   &clientAddress, sizeof(struct sockaddr_in));
+					memcpy(&sharedState->state->playerInputs[input.playerNumber], &input,
+						   sizeof(struct SpacewarClientInput));
+				}
+			}
+		}
+		bzero(&input, sizeof(struct SpacewarClientInput));
+	}
+
+	return NULL;
+}
+
+// Adds a new player to a physics simulation. Returns a randomly generated secret key:
+uint32_t addPlayer(SpacewarConnection * connection, int playerNumber, SpacewarState * state)
+{
+	connection->playerSecret = rand();
+	state->playerStates[playerNumber].inPlay = false;
+	
+	return connection->playerSecret;
 }
 
 // Creates a Spacewar server, intended to be ran by the standalone server or forked by the game client:
 void * runSpacewarServer(void * configuration)
 {
 	SpacewarServerConfiguration * serverConfig = (SpacewarServerConfiguration *)configuration;
-	printf("Starting Server. \n");
-	
-	// Initialize a simulation:
-	SpacewarState * currentState = calloc(1, sizeof(SpacewarState));
-	
+	printf("Starting Server.\n");
+		
 	// Create our network listeners:
 	int masterSocket = socket(AF_INET, SOCK_STREAM, 0);
-	int masterListeningSocket = socket(AF_INET, SOCK_DGRAM, 0);
-	int masterSendingSocket = socket(AF_INET, SOCK_DGRAM, 0);
-
-	if (masterListeningSocket < 0 || masterSendingSocket < 0 || masterSocket < 0)
+	if (masterSocket < 0)
 	{
 		fprintf(stderr, "Failed to create socket.\n");
 		exit(EXIT_FAILURE);
 	}
-
-	// Make the socket timeout:
-	struct timeval readTimeout;
-	readTimeout.tv_sec = 0;
-	readTimeout.tv_usec = 800;
-	setsockopt(masterListeningSocket, SOL_SOCKET, SO_RCVTIMEO, &readTimeout, sizeof(readTimeout));
-
-	// Create a structure to store the address we're sending to:
-	struct sockaddr_in sendingAddress;
-	sendingAddress.sin_family = AF_INET; // IPv4
-	sendingAddress.sin_addr.s_addr = inet_addr("127.0.0.1");
-	sendingAddress.sin_port = htons(serverConfig->port);
+	setsockopt(masterSocket, SOL_SOCKET, SO_REUSEADDR, &(int){1}, sizeof(int));
+	setsockopt(masterSocket, SOL_SOCKET, SO_REUSEPORT, &(int){1}, sizeof(int));
 
 	// Create a structure to bind the listening socket:
 	struct sockaddr_in listeningAddress;
@@ -73,16 +123,13 @@ void * runSpacewarServer(void * configuration)
 		fprintf(stderr, "Failed to bind socket.\n");
         exit(EXIT_FAILURE);
     }
-	if (bind(masterListeningSocket, (const struct sockaddr *)&listeningAddress, sizeof(listeningAddress)) < 0)
-    {
-		fprintf(stderr, "Failed to bind socket.\n");
-        exit(EXIT_FAILURE);
-    }
 
 	// Begin listening on the master socket:
 	listen(masterSocket, 32);
 	
 	// Create an epoll descriptor to keep track of clients:
+	int recievedEventCount = 0;
+	struct epoll_event receivedEvents[32];
 	int epollDescriptor = epoll_create(1);
 
 	// Add the master socket to the epoll set:
@@ -91,15 +138,21 @@ void * runSpacewarServer(void * configuration)
 	requestedEvents.data.fd = masterSocket;	
 	epoll_ctl(epollDescriptor, EPOLL_CTL_ADD, masterSocket, &requestedEvents);
 
-	int recievedEventCount = 0;
-	struct epoll_event receivedEvents[32];
-
 	// Create a set of connection structs to store the current connection information:
-	SpacewarConnection connectedClients[32];
+	SpacewarConnection * connectedClients = calloc(32, sizeof(SpacewarConnection));
+	for(int index = 0; index < 32; index++)
+	{
+		connectedClients[index].active = false;
+	}
 	
 	// Begin the simulation:
-	pthread_t physicsThread;
-	pthread_create(&physicsThread, NULL, runServerPhysics, currentState);
+	pthread_t physicsThread, udpThread;
+	SpacewarState * currentState = calloc(1, sizeof(SpacewarState));
+	SpacewarServerSharedState threadState;
+	threadState.state = currentState;
+	threadState.connections = connectedClients;
+	pthread_create(&physicsThread, NULL, runServerPhysics, &threadState);
+	pthread_create(&udpThread, NULL, runUDPSocket, &threadState);
 	
 	// Manage clients and sending packets back and forth:
 	while (true)
@@ -110,10 +163,8 @@ void * runSpacewarServer(void * configuration)
 			// If there's activity on the master socket, there's a new connection:
 			if (receivedEvents[eventIndex].data.fd == masterSocket)
 			{
-				struct sockaddr_in clientAddress;
-				socklen_t clientSocketLength = sizeof(struct sockaddr_in);
-				int newClientSocket = accept(masterSocket, (struct sockaddr *)&clientAddress,
-											 &clientSocketLength);
+				struct sockaddr_in clientAddress;				
+				int newClientSocket = accept(masterSocket, NULL, NULL);
 
 				// Check that the socket is functional:
 				if (newClientSocket < 0)
@@ -135,8 +186,6 @@ void * runSpacewarServer(void * configuration)
 						connectedClients[index].active = true;
 						connectedClients[index].missedPongs = false;
 						connectedClients[index].clientSocket = newClientSocket;
-						memcpy(&connectedClients[index].clientAddress, &clientAddress,
-							   sizeof(struct sockaddr_in));
 
 						// Send the HELLO packet to the player:
 						SpacewarMessage helloMessage;
@@ -145,9 +194,12 @@ void * runSpacewarServer(void * configuration)
 						send(newClientSocket, &helloMessage, sizeof(SpacewarMessage), 0);
 
 						// Add the player to the simulation:
-						//addPlayer(&connectedClients[index], index, currentState);
+						uint32_t secret = addPlayer(&connectedClients[index], index, currentState);
 
 						// Send the SECRET packet to the player:
+						helloMessage.type = 4;
+						helloMessage.content = secret;
+						send(newClientSocket, &helloMessage, sizeof(SpacewarMessage), 0);
 						
 						break;
 					}
@@ -156,8 +208,11 @@ void * runSpacewarServer(void * configuration)
 			// Otherwise, we've been sent a packet from one of the connected clients:
 			else
 			{
+				SpacewarConnection * client = getConnectionBySocket(connectedClients, 32,
+																	receivedEvents->data.fd);
+
 				SpacewarMessage receivedMessage;
-				size_t bytesRead = recv(receivedEvents->data.fd, &receivedMessage,
+				size_t bytesRead = recv(client->clientSocket, &receivedMessage,
 										sizeof(SpacewarMessage), 0);
 
 				if (bytesRead == 0)
@@ -166,19 +221,19 @@ void * runSpacewarServer(void * configuration)
 					SpacewarMessage goodbyeMessage;
 					goodbyeMessage.type = 1;
 					goodbyeMessage.content = 0;
-					send(receivedEvents->data.fd, &goodbyeMessage, sizeof(SpacewarMessage), 0);
+					send(client->clientSocket, &goodbyeMessage, sizeof(SpacewarMessage), 0);
 
 					// Remove the socket from the epoll interest set:
-					epoll_ctl(epollDescriptor, EPOLL_CTL_DEL, receivedEvents->data.fd, NULL);
+					epoll_ctl(epollDescriptor, EPOLL_CTL_DEL, client->clientSocket, NULL);
 					
 					// Remove the player from the simulation:
-					// removePlayer(&connectedClients[index], currentState);
-
-					// Clear the player struct:
-					// clearPlayer(findPlayerBySocket(connectedClients, 32, receivedEvents->data.fd));
+					//removePlayer(&connectedClients[index], currentState);
 					
 					// Shutdown the socket:
-					shutdown(receivedEvents->data.fd, SHUT_RDWR);
+					shutdown(client->clientSocket, SHUT_RDWR);
+
+					// Deactivate the connection:
+					client->active = false;
 				}
 
 				else

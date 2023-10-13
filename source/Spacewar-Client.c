@@ -3,15 +3,18 @@
 // | Copyright (C) 2023, Barra Ó Catháin   |
 // | See end of file for copyright notice. |
 // =========================================
+#include <unistd.h>
 #include <stdbool.h>
 #include <pthread.h>
 #include <SDL2/SDL.h>
 #include <SDL2/SDL_ttf.h>
 #include <SDL2/SDL_image.h>
 #include <SDL2/SDL_timer.h>
-
-#include "Spacewar-Server.h"
+#include "Spacewar-Messages.h"
 #include "Spacewar-Graphics.h"
+#include "Spacewar-Server.h"
+
+const char * messageStrings[] = {"HELLO", "GOODBYE", "PING", "PONG", "SECRET"};
 
 int main(int argc, char ** argv)
 {
@@ -49,10 +52,7 @@ int main(int argc, char ** argv)
 	// Set up event handling:
 	SDL_Event event;
 	bool keepRunning = true;
-
-	SpacewarServerConfiguration serverConfig = {5200};
-	pthread_t serverThread;
-	pthread_create(&serverThread, NULL, runSpacewarServer, &serverConfig);
+	bool runServer = false;
 	
 	// Display the titlescreen until we get an input:
 	while (!titlescreenInput && keepRunning)
@@ -79,7 +79,12 @@ int main(int argc, char ** argv)
 		{		
 			titlescreenInput = true;
 		}
-
+		if(keyboardState[SDL_SCANCODE_SPACE] == 1 && !runServer)
+		{		
+			runServer = true;
+			printf("Running server!\n");
+		}
+		
 		// Draw the title screen:
 		drawTitleScreen(&titlescreen);
 
@@ -87,6 +92,14 @@ int main(int argc, char ** argv)
 		SDL_Delay(1000 / 60);
 	}
 
+	if (runServer)
+	{
+		SpacewarServerConfiguration serverConfig = {5200};
+		pthread_t serverThread;
+		pthread_create(&serverThread, NULL, runSpacewarServer, &serverConfig);
+		sleep(1);
+	}
+	
 	// Give me a socket, and make sure it's working:
 	int serverSocket = socket(AF_INET, SOCK_STREAM, 0);
 	if (serverSocket == -1)
@@ -108,13 +121,40 @@ int main(int argc, char ** argv)
 		exit(0);
 	}
 
-	while(true)
+	printf("Connected.\n");
+
+	bool playerNumberSet, secretKeySet;
+	uint32_t playerNumber, secretKey;
+	SpacewarMessage message;
+
+	while (!playerNumberSet || !secretKeySet)
 	{
-		usleep(1);
+		recv(serverSocket, &message, sizeof(SpacewarMessage), 0);
+		switch (message.type)
+		{
+			case 0:
+			{
+				playerNumberSet = true;
+				playerNumber = message.content;
+				break;
+			}
+			case 4:
+			{
+				secretKeySet = true;
+				secretKey = message.content;
+			}
+		}			
 	}
+
+	printf("Player Number: %u\n"
+		   "Secret Key: %u\n", playerNumber, secretKey);
+	
 	// Spawn network thread:
 	
 	// Spawn game thread:
+	while(keepRunning)
+	{
+	}
 
 	// Spawn graphics thread:
 

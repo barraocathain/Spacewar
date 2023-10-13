@@ -3,8 +3,8 @@
 // | Copyright (C) 2023, Barra Ó Catháin   |
 // | See end of file for copyright notice. |
 // =========================================
-#ifndef SPACEWAR_GRAPHICS
-#define SPACEWAR_GRAPHICS
+#ifndef SPACEWAR_GRAPHICS_H
+#define SPACEWAR_GRAPHICS_H
 
 #include <stdint.h>
 #include <SDL2/SDL.h>

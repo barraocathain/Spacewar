@@ -20,6 +20,8 @@ typedef struct SpacewarShipState
 
 typedef struct SpacewarClientInput
 {
+	uint8_t playerNumber;
+	uint32_t secret;
 	double turningAmount, acceleratingAmount;
 	bool turningClockwise, turningAnticlockwise, accelerating;
 } SpacewarClientInput;
@@ -34,9 +36,6 @@ typedef struct SpacewarState
 
 // Does a single step of the physics:
 void doPhysicsTick(SpacewarState * state);
-
-// Adds a new player to a physics simulation:
-void addNewPlayer(SpacewarConnection * connection, SpacewarState * state);
 
 #endif
 // ========================================================
