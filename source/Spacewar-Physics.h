@@ -5,9 +5,9 @@
 // =========================================
 #ifndef SPACEWAR_PHYSICS
 #define SPACEWAR_PHYSICS
-
 #include <stdint.h>
 #include "xyVector.h"
+#include "Spacewar-Server.h"
 
 typedef struct SpacewarShipState
 {
@@ -34,6 +34,9 @@ typedef struct SpacewarState
 
 // Does a single step of the physics:
 void doPhysicsTick(SpacewarState * state);
+
+// Adds a new player to a physics simulation:
+void addNewPlayer(SpacewarConnection * connection, SpacewarState * state);
 
 #endif
 // ========================================================

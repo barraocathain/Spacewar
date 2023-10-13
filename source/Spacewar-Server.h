@@ -5,17 +5,27 @@
 // =========================================
 #ifndef SPACEWAR_SERVER
 #define SPACEWAR_SERVER
+#include <sys/types.h>
+#include <arpa/inet.h>
+#include <sys/socket.h>
+#include <netinet/in.h>
 
 typedef struct SpacewarConnection
 {
-	uint8_t missedPongs;
+	bool active;
 	int clientSocket;
-	int playerNumber;
+	uint8_t missedPongs;
+	uint32_t playerSecret;
 	struct sockaddr_in clientAddress;
 } SpacewarConnection;
 
+typedef struct SpacewarServerConfiguration
+{
+	uint16_t port;
+} SpacewarServerConfiguration;
+
 // Creates a spacewar server, intended to be ran by the standalone server or forked by the game client:
-int runSpacewarServer(uint16_t port);
+void * runSpacewarServer(void * configuration);
 
 #endif
 // =======================================================

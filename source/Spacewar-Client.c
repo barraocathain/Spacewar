@@ -4,11 +4,13 @@
 // | See end of file for copyright notice. |
 // =========================================
 #include <stdbool.h>
+#include <pthread.h>
 #include <SDL2/SDL.h>
 #include <SDL2/SDL_ttf.h>
 #include <SDL2/SDL_image.h>
 #include <SDL2/SDL_timer.h>
 
+#include "Spacewar-Server.h"
 #include "Spacewar-Graphics.h"
 
 int main(int argc, char ** argv)
@@ -47,6 +49,10 @@ int main(int argc, char ** argv)
 	// Set up event handling:
 	SDL_Event event;
 	bool keepRunning = true;
+
+	SpacewarServerConfiguration serverConfig = {5200};
+	pthread_t serverThread;
+	pthread_create(&serverThread, NULL, runSpacewarServer, &serverConfig);
 	
 	// Display the titlescreen until we get an input:
 	while (!titlescreenInput && keepRunning)
@@ -81,35 +87,33 @@ int main(int argc, char ** argv)
 		SDL_Delay(1000 / 60);
 	}
 
-	
-	// Connect to server:
-	while (keepRunning)
+	// Give me a socket, and make sure it's working:
+	int serverSocket = socket(AF_INET, SOCK_STREAM, 0);
+	if (serverSocket == -1)
 	{
-		// Update events and input:
-		SDL_PumpEvents();
-		SDL_GetKeyboardState(&keyCount);
-
-		// Check windowing system events:
-		while (SDL_PollEvent(&event) != 0)
-		{
-			switch (event.type)
-			{
-				case SDL_QUIT:
-				{
-					keepRunning = false;
-					continue;
-				}
-			}
-		}
-		
-		drawMenuScreen(&titlescreen);
-
-		// Delay enough so that we run at 60 frames in the menu:
-		SDL_Delay(1000 / 60);
+		printf("Socket creation failed.\n");
+		exit(EXIT_FAILURE);
 	}
-	
-	// Spawn network thread:
 
+	// Create an address struct to point at the server:
+	struct sockaddr_in serverAddress;
+	serverAddress.sin_family = AF_INET;
+	serverAddress.sin_addr.s_addr = inet_addr("127.0.0.1");
+	serverAddress.sin_port = htons(5200);
+  
+	// Connect to the server:
+	if (connect(serverSocket, (struct sockaddr *)&serverAddress, sizeof(struct sockaddr_in)) != 0)
+	{
+		fprintf(stderr, "Connecting to the server failed.\n");
+		exit(0);
+	}
+
+	while(true)
+	{
+		usleep(1);
+	}
+	// Spawn network thread:
+	
 	// Spawn game thread:
 
 	// Spawn graphics thread:
@@ -134,5 +138,5 @@ int main(int argc, char ** argv)
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 // Local Variables:
-// compile-command: "gcc `sdl2-config --libs --cflags` Spacewar-Client.c Spacewar-Graphics.c -lSDL2_image -lSDL2_ttf -lm -o 'Spacewar-Client'"
+// compile-command: "gcc `sdl2-config --libs --cflags` Spacewar-Client.c Spacewar-Graphics.c Spacewar-Server.c -lSDL2_image -lSDL2_ttf -lm -o 'Spacewar-Client'"
 // End:

@@ -8,19 +8,20 @@
 
 #include <stdint.h>
 
-const char * messageStrings[] = {"HELLO", "GOODBYE", "PING", "PONG"};
+const char * messageStrings[] = {"HELLO", "GOODBYE", "PING", "PONG", "SECRET"};
 
-struct SpacewarMessage
+typedef struct SpacewarMessage
 {
 	uint8_t type;
-	uint8_t content;
-};
+	uint32_t content;
+} SpacewarMessage;
 
 /* Message Types:   
    0 - HELLO: Contents sent to client indicate a given player number.
    1 - GOODBYE: No contents, end the connection.
    2 - PING: Contents indicate the missed amount of pongs.
    3 - PONG: No contents.
+   4 - SECRET: Contents indicate the secret key that must be sent with UDP packets to the server.
 */
 
 #endif
