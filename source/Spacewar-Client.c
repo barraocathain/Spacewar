@@ -15,6 +15,47 @@
 #include "Spacewar-Server.h"
 
 const char * messageStrings[] = {"HELLO", "GOODBYE", "PING", "PONG", "SECRET"};
+typedef struct SpacewarNetworkConfig
+{
+	uint8_t playerNumber;
+	uint32_t secretKey;
+	SpacewarState * state;
+} SpacewarNetworkConfig;
+
+void * runNetworkThread (void * parameters)
+{
+	SpacewarNetworkConfig * configuration = (SpacewarNetworkConfig *)parameters;
+	int udpSocket = 0;
+	udpSocket = socket(AF_INET, SOCK_DGRAM, 0);
+
+	// Configure a timeout for receiving:
+	struct timeval receiveTimeout;
+	receiveTimeout.tv_sec = 0;
+	receiveTimeout.tv_usec = 1000;
+	setsockopt(udpSocket, SOL_SOCKET, SO_RCVTIMEO, &receiveTimeout, sizeof(struct timeval));
+
+	// Point at the server:
+	struct sockaddr_in serverAddress;
+	serverAddress.sin_family = AF_INET;
+	serverAddress.sin_addr.s_addr = inet_addr("127.0.0.1");
+	serverAddress.sin_port = htons(5200);
+
+	// A structure to store the most recent state from the network:
+	SpacewarState * updatedState = calloc(1, sizeof(SpacewarState));
+
+	SpacewarClientInput input;
+	input.secret = configuration->secretKey;
+	input.playerNumber = configuration->playerNumber;
+	
+	while (true)
+	{
+		sendto(udpSocket, &input, sizeof(SpacewarClientInput), 0, (struct sockaddr *)&serverAddress, sizeof(struct sockaddr_in));
+		recvfrom(udpSocket, updatedState, sizeof(SpacewarState), 0, NULL, NULL);
+		memcpy(configuration->state, updatedState, sizeof(SpacewarState));
+//		printf("Received, %f\t%f\n", updatedState->playerStates[0].position.xComponent,
+//			updatedState->playerStates[0].position.yComponent);
+	}
+}
 
 int main(int argc, char ** argv)
 {
@@ -126,7 +167,7 @@ int main(int argc, char ** argv)
 	printf("Connected.\n");
 
 	bool playerNumberSet, secretKeySet;
-	uint32_t playerNumber, secretKey;
+	SpacewarNetworkConfig networkConfiguration;
 	SpacewarMessage message;
 
 	while (!playerNumberSet || !secretKeySet)
@@ -137,21 +178,25 @@ int main(int argc, char ** argv)
 			case 0:
 			{
 				playerNumberSet = true;
-				playerNumber = message.content;
+				networkConfiguration.playerNumber = message.content;
 				break;
 			}
 			case 4:
 			{
 				secretKeySet = true;
-				secretKey = message.content;
+				networkConfiguration.secretKey = message.content;
 			}
 		}			
 	}
 
-	printf("Player Number: %u\n"
-		   "Secret Key: %u\n", playerNumber, secretKey);
+	networkConfiguration.state = calloc(1, sizeof(SpacewarState));
 	
-	// Spawn network input thread:
+	printf("Player Number: %u\n"
+		   "Secret Key: %u\n", networkConfiguration.playerNumber, networkConfiguration.secretKey);
+	
+	// Spawn network thread:
+	pthread_t networkThread;
+	pthread_create(&networkThread, NULL, runNetworkThread, &networkConfiguration);
 	
 	// Spawn client-side-prediction thread:
 	if (!runServer)
@@ -160,7 +205,21 @@ int main(int argc, char ** argv)
 	}
 	
 	// Spawn graphics thread:
-
+	int width, height;
+	while (true)
+	{
+		SDL_PumpEvents();
+		SDL_SetRenderDrawColor(renderer, 0, 0, 0, 255);
+		SDL_RenderClear(renderer);
+		SDL_SetRenderDrawColor(renderer, 255, 255, 0, 255);
+		SDL_GetWindowSize(window, &width, &height);
+		SDL_RenderDrawLine(renderer, width/2, height/2,
+						   width/2 + (long)(networkConfiguration.state->playerStates[0].velocity.xComponent),
+						   height/2 + (long)(networkConfiguration.state->playerStates[0].velocity.yComponent));
+		SDL_RenderPresent(renderer);
+	}
+	pthread_join(networkThread, NULL);
+	
 	return 0;
 }
 // =======================================================

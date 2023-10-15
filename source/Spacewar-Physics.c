@@ -3,6 +3,9 @@
 // | Copyright (C) 2023, Barra Ó Catháin   |
 // | See end of file for copyright notice. |
 // =========================================
+#include <stdio.h>
+#include <stdlib.h>
+#include <stdbool.h>
 #include "Spacewar-Physics.h"
 
 void doPhysicsTick(SpacewarState * state)
@@ -10,57 +13,59 @@ void doPhysicsTick(SpacewarState * state)
 	double gravityMagnitude, gravityAcceleration;
 	for (int shipIndex = 0; shipIndex < 32; shipIndex++)
 	{
-		SpacewarShipState * currentShip = state->playerStates[shipIndex];
+		SpacewarShipState * currentShip = &state->playerStates[shipIndex];
 		if (currentShip->inPlay)
 		{
 			// Calculate Gravity:
 			xyVectorBetweenPoints(currentShip->position.xComponent, currentShip->position.yComponent,
-								  0, 0, currentShip.gravity);
-			gravityMagnitude = normalizeXYVector(currentShip.gravity);
+								  0.0, 0.0, &currentShip->gravity);
+			gravityMagnitude = normalizeXYVector(&currentShip->gravity);
 			gravityAcceleration = 0;
 
 			// Some maths that felt okay:
-			if (gravityMagnitude >= 116)
+			if (gravityMagnitude >= 116)			   
 			{
-				gravityAcceleration = pow(2, (3000 / (gravityMagnitude << 1)))) >> 3;
+				gravityAcceleration = pow(2, (3000 / (gravityMagnitude / 2))) / 16;
 			}
 			// We're actually in the black hole; teleport:
 			else
 			{
-				ship->position.xComponent = random() % 8000;
-				ship->position.yComponent = random() % 8000;
-				ship->velocity.xComponent *= 0.01;
-				ship->velocity.yComponent *= 0.01;
-			}
-		
-		 	multiplyXYVector(currentShip.gravity, gravityAcceleration);
+				currentShip->position.xComponent = (double)(random() % 7500);
+				currentShip->position.yComponent = (double)(random() % 7500);
+				currentShip->velocity.xComponent *= 0.01;
+				currentShip->velocity.yComponent *= 0.01;
+			}				
+			
+		 	multiplyXYVector(&currentShip->gravity, gravityAcceleration);
 			
 			// Apply Inputs:
 			
 			// Apply Gravity and Velocity to Position:
-			addXYVector(currentShip.position, currentShip.gravity);
+			addXYVector(&currentShip->velocity, &currentShip->gravity);
+			addXYVector(&currentShip->position, &currentShip->velocity);
 			
 			// Wrap position to game field: 
-			if (currentShip->position.xComponent > 8000)
+			if (currentShip->position.xComponent > 8000.0)
 			{
-				state->playerStates[shipIndex].position.xComponent = -7999;
+				state->playerStates[shipIndex].position.xComponent = -7999.0;
 				state->playerStates[shipIndex].velocity.xComponent *= 0.9;
 			}
-			if (currentShip->position.xComponent < -8000)
+			if (currentShip->position.xComponent < -8000.0)
 			{
-				state->playerStates[shipIndex].position.xComponent = 7999;
+				state->playerStates[shipIndex].position.xComponent = 7999.0;
 				state->playerStates[shipIndex].velocity.xComponent *= 0.9;
 			}
-			if (currentShip->position.yComponent > 8000)
+			if (currentShip->position.yComponent > 8000.0)
 			{
-				state->playerStates[shipIndex].position.yComponent = -7999;
+				state->playerStates[shipIndex].position.yComponent = -7999.0;
 				state->playerStates[shipIndex].velocity.yComponent *= 0.9;
 			}
-			if (currentShip->position.yComponent < -8000)
+			if (currentShip->position.yComponent < -8000.0)
 			{
-				state->playerStates[shipIndex].position.xComponent = 7999;
+				state->playerStates[shipIndex].position.yComponent = 7999.0;
 				state->playerStates[shipIndex].velocity.yComponent *= 0.9;
-			}			
+			}
+			printf("%f %f\n", currentShip->position.xComponent, currentShip->position.yComponent);
 		}
 	}
 }

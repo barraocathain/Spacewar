@@ -29,14 +29,25 @@ SpacewarConnection * getConnectionBySocket(SpacewarConnection * connections, siz
 	return NULL;
 }
 
+void sendCurrentState(SpacewarState * state, SpacewarConnection * connections, int udpSocket)
+{
+	for (int connectionIndex = 0; connectionIndex < 32; connectionIndex++)
+	{
+		if (connections[connectionIndex].active)
+		{
+			sendto(udpSocket, state, sizeof(SpacewarState), 0,
+				   (struct sockaddr *)&connections[connectionIndex].clientAddress, sizeof(struct sockaddr_in));
+		}
+	}
+}
 void * runServerPhysics(void * parameters)
 {
 	SpacewarServerSharedState * sharedState = (SpacewarServerSharedState *)parameters;
 
 	while (true)
 	{
-//		doPhysicsTick(sharedState->physicsState);
-//		sendCurrentState(sharedState->physicsState, sharedState->connections);		
+		doPhysicsTick(sharedState->physicsState);
+		sendCurrentState(sharedState->physicsState, sharedState->connections, sharedState->udpSocket);		
 		usleep(15625);
 	}
 
@@ -56,12 +67,16 @@ void * runInputReceiver(void * parameters)
 	{
 		bytesRead = recvfrom(sharedState->udpSocket, &input, sizeof(SpacewarClientInput), 0,
 							 (struct sockaddr *)&clientAddress, &socketAddressLength);
+//		printf("Read an input... ");
 		if (bytesRead == sizeof(SpacewarClientInput))
 		{
+//			printf("It's the right size... ");
 			if (input.playerNumber < 32)
 			{
+//				printf("Valid player number... ");
 				if (input.secret == sharedState->connections[input.playerNumber].playerSecret)
 				{
+//					printf("Valid input for player %d!\n", index);
 					sharedState->physicsState->playerStates[input.playerNumber].inPlay = true;
 					memcpy(&sharedState->connections[input.playerNumber].clientAddress,
 						   &clientAddress, sizeof(struct sockaddr_in));
