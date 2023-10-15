@@ -13,7 +13,6 @@ static inline double angleBetweenVectors(xyVector * vectorA, xyVector * vectorB)
 {
 	double dotProduct = (vectorA->xComponent * vectorB->xComponent) + (vectorA->yComponent * vectorB->yComponent);
 	double determinant = (vectorA->xComponent * vectorB->yComponent) - (vectorA->yComponent * vectorB->xComponent);
-
 	return atan2(dotProduct, determinant) / 0.01745329;
 }
 

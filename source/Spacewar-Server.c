@@ -31,40 +31,30 @@ SpacewarConnection * getConnectionBySocket(SpacewarConnection * connections, siz
 
 void * runServerPhysics(void * parameters)
 {
-	SpacewarState * state = (SpacewarState *)parameters;
+	SpacewarServerSharedState * sharedState = (SpacewarServerSharedState *)parameters;
 
 	while (true)
 	{
-		//doPhysicsTick(state);
-		//sendCurrentState();		
+//		doPhysicsTick(sharedState->physicsState);
+//		sendCurrentState(sharedState->physicsState, sharedState->connections);		
 		usleep(15625);
 	}
 
 	return NULL;
 }
 
-void * runUDPSocket(void * parameters)
+void * runInputReceiver(void * parameters)
 {
 	SpacewarServerSharedState * sharedState = (SpacewarServerSharedState *)parameters;
-	int udpSocket, bytesRead;
+	int bytesRead;
 	socklen_t socketAddressLength;
-	struct sockaddr_in clientAddress, serverAddress;
-	if ((udpSocket = socket(AF_INET, SOCK_DGRAM, 0)) < 0)
-	{
-		exit(EXIT_FAILURE);
-	}
-
-	memset(&serverAddress, 0, sizeof(serverAddress));       
-    serverAddress.sin_family = AF_INET;
-    serverAddress.sin_port = htons(5200);
-    serverAddress.sin_addr.s_addr = INADDR_ANY;
+	struct sockaddr_in clientAddress;
 
 	SpacewarClientInput input;
-	bind(udpSocket, (struct sockaddr *)&serverAddress, sizeof(struct sockaddr_in));
 
 	while (true)
 	{
-		bytesRead = recvfrom(udpSocket, &input, sizeof(SpacewarClientInput), 0,
+		bytesRead = recvfrom(sharedState->udpSocket, &input, sizeof(SpacewarClientInput), 0,
 							 (struct sockaddr *)&clientAddress, &socketAddressLength);
 		if (bytesRead == sizeof(SpacewarClientInput))
 		{
@@ -72,10 +62,11 @@ void * runUDPSocket(void * parameters)
 			{
 				if (input.secret == sharedState->connections[input.playerNumber].playerSecret)
 				{
+					sharedState->physicsState->playerStates[input.playerNumber].inPlay = true;
 					memcpy(&sharedState->connections[input.playerNumber].clientAddress,
 						   &clientAddress, sizeof(struct sockaddr_in));
-					memcpy(&sharedState->state->playerInputs[input.playerNumber], &input,
-						   sizeof(struct SpacewarClientInput));
+					memcpy(&sharedState->physicsState->playerInputs[input.playerNumber], &(input.input),
+						   sizeof(struct SpacewarShipInput));
 				}
 			}
 		}
@@ -144,15 +135,35 @@ void * runSpacewarServer(void * configuration)
 	{
 		connectedClients[index].active = false;
 	}
+
+	// Create a UDP socket:
+	int udpSocket = 0;
+	if ((udpSocket = socket(AF_INET, SOCK_DGRAM, 0)) < 0)
+	{
+		exit(EXIT_FAILURE);
+	}
+
+	// Create a struct to bind the UDP socket to a port:
+	struct sockaddr_in serverAddress;
+	memset(&serverAddress, 0, sizeof(serverAddress));       
+    serverAddress.sin_family = AF_INET;
+    serverAddress.sin_port = htons(5200);
+    serverAddress.sin_addr.s_addr = INADDR_ANY;
+
+	// Bind it:
+	bind(udpSocket, (struct sockaddr *)&serverAddress, sizeof(struct sockaddr_in));
 	
-	// Begin the simulation:
-	pthread_t physicsThread, udpThread;
+	// Setup the server threads:
+	pthread_t physicsThread, inputThread;
 	SpacewarState * currentState = calloc(1, sizeof(SpacewarState));
 	SpacewarServerSharedState threadState;
-	threadState.state = currentState;
+	threadState.udpSocket = udpSocket;
+	threadState.physicsState = currentState;
 	threadState.connections = connectedClients;
+
+	// Begin the simulation:
+	pthread_create(&inputThread, NULL, runInputReceiver, &threadState);
 	pthread_create(&physicsThread, NULL, runServerPhysics, &threadState);
-	pthread_create(&udpThread, NULL, runUDPSocket, &threadState);
 	
 	// Manage clients and sending packets back and forth:
 	while (true)

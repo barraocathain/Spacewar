@@ -32,7 +32,8 @@ typedef struct SpacewarServerConfiguration
 
 typedef struct SpacewarServerSharedState
 {
-	SpacewarState * state;
+	int udpSocket;
+	SpacewarState * physicsState;
 	SpacewarConnection * connections;
 } SpacewarServerSharedState;
 

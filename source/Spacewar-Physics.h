@@ -18,12 +18,18 @@ typedef struct SpacewarShipState
 	xyVector velocity;	
 } SpacewarShipState;
 
+
+typedef struct SpacewarShipInput
+{
+	double turningAmount, acceleratingAmount;
+	bool turningClockwise, turningAnticlockwise, accelerating;
+} SpacewarShipInput;
+
 typedef struct SpacewarClientInput
 {
 	uint8_t playerNumber;
 	uint32_t secret;
-	double turningAmount, acceleratingAmount;
-	bool turningClockwise, turningAnticlockwise, accelerating;
+	SpacewarShipInput input;	
 } SpacewarClientInput;
 
 typedef struct SpacewarState
@@ -31,7 +37,7 @@ typedef struct SpacewarState
 	uint64_t tickNumber;
 	struct timeval timestamp;
 	SpacewarShipState playerStates[32];
-	SpacewarClientInput playerInputs[32];
+	SpacewarShipInput playerInputs[32]; 
 } SpacewarState;
 
 // Does a single step of the physics:

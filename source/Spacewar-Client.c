@@ -79,6 +79,8 @@ int main(int argc, char ** argv)
 		{		
 			titlescreenInput = true;
 		}
+
+		// Check if Space was pressed:
 		if(keyboardState[SDL_SCANCODE_SPACE] == 1 && !runServer)
 		{		
 			runServer = true;
@@ -149,13 +151,14 @@ int main(int argc, char ** argv)
 	printf("Player Number: %u\n"
 		   "Secret Key: %u\n", playerNumber, secretKey);
 	
-	// Spawn network thread:
+	// Spawn network input thread:
 	
-	// Spawn game thread:
-	while(keepRunning)
+	// Spawn client-side-prediction thread:
+	if (!runServer)
 	{
+		pthread_t clientSidePredictionThread;
 	}
-
+	
 	// Spawn graphics thread:
 
 	return 0;
