@@ -22,7 +22,7 @@ typedef struct SpacewarShipState
 typedef struct SpacewarShipInput
 {
 	double turningAmount, acceleratingAmount;
-	bool turningClockwise, turningAnticlockwise, accelerating;
+	uint8_t turningClockwise, turningAnticlockwise, accelerating;
 } SpacewarShipInput;
 
 typedef struct SpacewarClientInput

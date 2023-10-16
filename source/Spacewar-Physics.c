@@ -10,7 +10,7 @@
 
 void doPhysicsTick(SpacewarState * state)
 {
-	double gravityMagnitude, gravityAcceleration;
+	double gravityMagnitude, gravityAcceleration, velocityMagnitude;
 	for (int shipIndex = 0; shipIndex < 32; shipIndex++)
 	{
 		SpacewarShipState * currentShip = &state->playerStates[shipIndex];
@@ -21,26 +21,40 @@ void doPhysicsTick(SpacewarState * state)
 								  0.0, 0.0, &currentShip->gravity);
 			gravityMagnitude = normalizeXYVector(&currentShip->gravity);
 			gravityAcceleration = 0;
-
+			
 			// Some maths that felt okay:
 			if (gravityMagnitude >= 116)			   
 			{
-				gravityAcceleration = pow(2, (3000 / (gravityMagnitude / 2))) / 16;
+				gravityAcceleration = (45000 / pow(gravityMagnitude, 2)) * 6.67;
 			}
-			// We're actually in the black hole; teleport:
+			// We're pactually in the black hole; teleport:
 			else
 			{
 				currentShip->position.xComponent = (double)(random() % 7500);
 				currentShip->position.yComponent = (double)(random() % 7500);
-				currentShip->velocity.xComponent *= 0.01;
-				currentShip->velocity.yComponent *= 0.01;
+				currentShip->velocity.xComponent = 0;
+				currentShip->velocity.yComponent = 0;
 			}				
-			
+
 		 	multiplyXYVector(&currentShip->gravity, gravityAcceleration);
 			
 			// Apply Inputs:
+							
+			// Rotate the engine vector if needed:
+			if (state->playerInputs[shipIndex].turningClockwise == 1)
+			{
+				rotateXYVector(&currentShip->engine, 2.5);
+			}
+			if (state->playerInputs[shipIndex].turningAnticlockwise == 1)
+			{
+				rotateXYVector(&currentShip->engine, -2.5);
+			}
 			
 			// Apply Gravity and Velocity to Position:
+			if (state->playerInputs[shipIndex].accelerating == 1)
+			{
+				addXYVector(&currentShip->velocity, &currentShip->engine);
+			}
 			addXYVector(&currentShip->velocity, &currentShip->gravity);
 			addXYVector(&currentShip->position, &currentShip->velocity);
 			
@@ -65,7 +79,6 @@ void doPhysicsTick(SpacewarState * state)
 				state->playerStates[shipIndex].position.yComponent = 7999.0;
 				state->playerStates[shipIndex].velocity.yComponent *= 0.9;
 			}
-			printf("%f %f\n", currentShip->position.xComponent, currentShip->position.yComponent);
 		}
 	}
 }
