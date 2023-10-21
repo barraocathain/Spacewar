@@ -1,10 +1,11 @@
-#include <SDL2/SDL.h>
-#include <SDL2/SDL_image.h>
-#include <SDL2/SDL_timer.h>
-#include <SDL2/SDL_ttf.h>
 #include <stdint.h>
 #include <stdlib.h>
-#include "spacewarGraphics.h"
+#include <SDL2/SDL.h>
+#include <SDL2/SDL_ttf.h>
+#include <SDL2/SDL_image.h>
+#include <SDL2/SDL_timer.h>
+
+#include "Spacewar-Graphics.h"
 
 SpacewarTitlescreen prepareTitleScreen(SDL_Window * window, SDL_Renderer * renderer,
 									   char * starfieldTexturePath, char * logoTexturePath,
@@ -120,4 +121,37 @@ void drawTitleScreen(SpacewarTitlescreen * titlescreen)
 	SDL_RenderPresent(titlescreen->renderer);
 }
 
+/* void drawMenuScreen(SpacewarMenuscreen * menuscreen) */
+/* { */
+/* 	// Get the current size of the window: */
+/* 	int width = 0, height = 0; */
+/* 	SDL_GetWindowSize(menuscreen->window, &width, &height); */
+
+/* 	// Set the renderer colour to black and clear the screen: */
+/* 	SDL_SetRenderDrawColor(menuscreen->renderer, 0, 0, 0, 255); */
+/* 	SDL_RenderClear(menuscreen->renderer); */
+
+/* 	// Set the correct position to begin the starfield, and scroll it back for the next frame: */
+/* 	menuscreen->starfieldRectangle->x = 0 - menuscreen->xScroll++; */
+/* 	menuscreen->starfieldRectangle->y = 0; */
+	
+/* 	// Draw the starfield by tiling the starfield texture: */
+/* 	while (menuscreen->starfieldRectangle->x <= (width + menuscreen->starfieldRectangle->w)) */
+/* 	{ */
+/* 		// Go down, covering a column of the screen: */
+/* 		while(menuscreen->starfieldRectangle->y <= (height + menuscreen->starfieldRectangle->h)) */
+/* 		{ */
+/* 			SDL_RenderCopy(menuscreen->renderer, menuscreen->starfieldTexture, NULL, */
+/* 						   menuscreen->starfieldRectangle); */
+/* 			menuscreen->starfieldRectangle->y += menuscreen->starfieldRectangle->h;			 */
+/* 		} */
+		
+/* 		// Back to the top, move over one texture width: */
+/* 		menuscreen->starfieldRectangle->y = 0; */
+/* 		menuscreen->starfieldRectangle->x += menuscreen->starfieldRectangle->w; */
+/* 	} */
+	
+/* 	// Display to the renderer: */
+/* 	SDL_RenderPresent(menuscreen->renderer); */
+/* } */
 
