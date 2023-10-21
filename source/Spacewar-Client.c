@@ -63,7 +63,7 @@ int main(int argc, char ** argv)
 
 	// Initialize image loading:
 	IMG_Init(IMG_INIT_PNG);
-	SDL_SetHint(SDL_HINT_RENDER_SCALE_QUALITY, "2");
+	SDL_SetHint(SDL_HINT_RENDER_SCALE_QUALITY, "0");
 
 	// Initialize font support:
 	TTF_Init();
@@ -237,18 +237,37 @@ int main(int argc, char ** argv)
 		shipRectangles[index].w = 32;
 		shipRectangles[index].h = 32;
 	}
-	
+
+	SDL_Rect rendererSize;
 	int width, height;
 	while (true)
 	{
 		SDL_PumpEvents();
 		SDL_GetKeyboardState(&keyCount);
-		SDL_GetWindowSize(window, &width, &height);
-
+		//SDL_GetWindowSize(window, &width, &height);
+		
 		// Do input:
 		networkConfiguration.input.input.turningClockwise = keyboardState[SDL_SCANCODE_RIGHT];
 		networkConfiguration.input.input.turningAnticlockwise = keyboardState[SDL_SCANCODE_LEFT];
 		networkConfiguration.input.input.accelerating = keyboardState[SDL_SCANCODE_UP];
+
+		if  (keyboardState[SDL_SCANCODE_PAGEUP] == 1)
+		{
+			float scaleX, scaleY;
+			SDL_RenderGetScale(renderer, &scaleX, &scaleY);
+			SDL_RenderSetScale(renderer, scaleX + 0.01, scaleY + 0.01);
+		}
+
+		if  (keyboardState[SDL_SCANCODE_PAGEDOWN] == 1)
+		{
+			float scaleX, scaleY;
+			SDL_RenderGetScale(renderer, &scaleX, &scaleY);
+			SDL_RenderSetScale(renderer, scaleX - 0.01, scaleY - 0.01);
+		}
+
+		SDL_RenderGetViewport(renderer, &rendererSize);
+		width = rendererSize.w;
+		height = rendererSize.h;
 		
 		// Clear the screen:
 		SDL_SetRenderDrawColor(renderer, 0, 0, 0, 255);
@@ -263,7 +282,7 @@ int main(int argc, char ** argv)
 			while(starfieldRect.y <= (height + 800))
 			{
 				SDL_RenderCopy(renderer, starfieldTexture,  NULL,  &starfieldRect);
-				starfieldRect.y += 800;
+ 				starfieldRect.y += 800;
 			}
 			starfieldRect.y = -900 - (long)state->playerStates[playerNumber].position.yComponent % 800;
 			starfieldRect.x += 800;
@@ -292,6 +311,27 @@ int main(int argc, char ** argv)
 						 angleBetweenVectors(&state->playerStates[playerNumber].engine, &upVector) + 90,
 						 NULL, 0);
 
+		// Draw every other ship:
+		for (int index = 0; index < 32; index++)
+		{
+			if (index == playerNumber)
+			{
+				continue;
+			}
+			if (state->playerStates[playerNumber].inPlay == true)
+			{
+				shipRectangles[index].x = ((long)(state->playerStates[index].position.xComponent -
+										   state->playerStates[playerNumber].position.xComponent) -
+										   32 + (width/2));
+				shipRectangles[index].y = ((long)(state->playerStates[index].position.yComponent -
+												  state->playerStates[playerNumber].position.yComponent) -
+										   32 + (height/2));
+
+				SDL_RenderCopyEx(renderer, currentTexture, NULL, &shipRectangles[index],
+								 angleBetweenVectors(&state->playerStates[index].engine, &upVector) + 90,
+								 NULL, 0);
+			}
+		}
 		// Present to the screen:
 		SDL_RenderPresent(renderer);
 		SDL_Delay(1000 / 144);
