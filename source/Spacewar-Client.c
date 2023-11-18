@@ -333,7 +333,7 @@ int main(int argc, char ** argv)
 			{
 				continue;
 			}
-			if (state->playerStates[playerNumber].inPlay == true)
+			if (state->playerStates[index].inPlay == true)
 			{
 				shipRectangles[index].x = ((long)(state->playerStates[index].position.xComponent -
 										   state->playerStates[playerNumber].position.xComponent) -
