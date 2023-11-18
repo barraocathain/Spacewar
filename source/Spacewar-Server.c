@@ -36,7 +36,8 @@ void sendCurrentState(SpacewarState * state, SpacewarConnection * connections, i
 		if (connections[connectionIndex].active)
 		{
 			sendto(udpSocket, state, sizeof(SpacewarState), 0,
-				   (struct sockaddr *)&connections[connectionIndex].clientAddress, sizeof(struct sockaddr_in));
+				   (struct sockaddr *)&connections[connectionIndex].clientAddress,
+				   sizeof(struct sockaddr_in));
 		}
 	}
 }

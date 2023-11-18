@@ -15,15 +15,15 @@
 #include "Spacewar-Server.h"
 
 const char * messageStrings[] = {"HELLO", "GOODBYE", "PING", "PONG", "SECRET"};
-typedef struct SpacewarNetworkConfig
+typedef struct SpacewarSharedState
 {
 	SpacewarClientInput input;
 	SpacewarState * state;
-} SpacewarNetworkConfig;
+} SpacewarSharedState;
 
 void * runNetworkThread (void * parameters)
 {
-	SpacewarNetworkConfig * configuration = (SpacewarNetworkConfig *)parameters;
+	SpacewarSharedState * sharedState = (SpacewarSharedState *)parameters;
 	int udpSocket = 0;
 	udpSocket = socket(AF_INET, SOCK_DGRAM, 0);
 
@@ -44,10 +44,23 @@ void * runNetworkThread (void * parameters)
 	
 	while (true)
 	{
-		sendto(udpSocket, &configuration->input, sizeof(SpacewarClientInput), 0,
+		sendto(udpSocket, &sharedState->input, sizeof(SpacewarClientInput), 0,
 			   (struct sockaddr *)&serverAddress, sizeof(struct sockaddr_in));
 		recvfrom(udpSocket, updatedState, sizeof(SpacewarState), 0, NULL, NULL);
-		memcpy(configuration->state, updatedState, sizeof(SpacewarState));
+		memcpy(sharedState->state, updatedState, sizeof(SpacewarState));
+	}
+}
+
+void * runPredictionThread(void * parameters)
+{
+	SpacewarSharedState * sharedState = (SpacewarSharedState *)parameters;
+	
+	while (true)
+	{
+		memcpy(&sharedState->state->playerInputs[sharedState->input.playerNumber],
+			   &sharedState->input.input, sizeof(SpacewarShipInput));
+		doPhysicsTick(sharedState->state);
+		usleep(15625);
 	}
 }
 
@@ -165,7 +178,7 @@ int main(int argc, char ** argv)
 
 	bool playerNumberSet, secretKeySet;
 	uint8_t playerNumber;
-	SpacewarNetworkConfig networkConfiguration;
+	SpacewarSharedState sharedState;
 	SpacewarMessage message;
 
 	while (!playerNumberSet || !secretKeySet)
@@ -177,30 +190,24 @@ int main(int argc, char ** argv)
 			{
 				playerNumberSet = true;
 				playerNumber = message.content;
-				networkConfiguration.input.playerNumber = message.content;
+				sharedState.input.playerNumber = message.content;
 				break;
 			}
 			case 4:
 			{
 				secretKeySet = true;
-				networkConfiguration.input.secret = message.content;
+				sharedState.input.secret = message.content;
 			}
 		}			
 	}
 
 	SpacewarState * state = calloc(1, sizeof(SpacewarState));
-	networkConfiguration.state = state;
+	sharedState.state = state;
 	
 	// Spawn network thread:
 	pthread_t networkThread;
-	pthread_create(&networkThread, NULL, runNetworkThread, &networkConfiguration);
+	pthread_create(&networkThread, NULL, runNetworkThread, &sharedState);
 	
-	// Spawn client-side-prediction thread:
-	if (!runServer)
-	{
-		pthread_t clientSidePredictionThread;
-	}
-
 	// Load in all of our textures:
 	SDL_Texture * blackHoleTexture, * idleTexture, * acceleratingTexture, * clockwiseTexture,
 		* anticlockwiseTexture, * currentTexture, * acceleratingTexture2, *blackHolePointerTexture;
@@ -240,6 +247,14 @@ int main(int argc, char ** argv)
 
 	SDL_Rect rendererSize;
 	int width, height;
+
+	// Spawn client-side-prediction thread:
+	pthread_t predictionThread;
+	if (!runServer)
+	{
+		pthread_create(&predictionThread, NULL, runPredictionThread, &sharedState);
+	}
+
 	while (true)
 	{
 		SDL_PumpEvents();
@@ -247,9 +262,9 @@ int main(int argc, char ** argv)
 		//SDL_GetWindowSize(window, &width, &height);
 		
 		// Do input:
-		networkConfiguration.input.input.turningClockwise = keyboardState[SDL_SCANCODE_RIGHT];
-		networkConfiguration.input.input.turningAnticlockwise = keyboardState[SDL_SCANCODE_LEFT];
-		networkConfiguration.input.input.accelerating = keyboardState[SDL_SCANCODE_UP];
+		sharedState.input.input.turningClockwise = keyboardState[SDL_SCANCODE_RIGHT];
+		sharedState.input.input.turningAnticlockwise = keyboardState[SDL_SCANCODE_LEFT];
+		sharedState.input.input.accelerating = keyboardState[SDL_SCANCODE_UP];
 
 		if  (keyboardState[SDL_SCANCODE_PAGEUP] == 1)
 		{
